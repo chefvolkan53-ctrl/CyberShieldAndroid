@@ -1,0 +1,15 @@
+{
+  "binary": {
+    "accuracy": 0.8487878030492377,
+    "roc_auc": 0.9824456800684345,
+    "anomaly_precision": 0.4521178637200737,
+    "anomaly_recall": 0.9800399201596807,
+    "recommended_threshold": 0.39586976170539856
+  },
+  "taxonomy": {
+    "accuracy": 0.8330417395651087
+  },
+  "subtype": {
+    "accuracy": 0.8197950512371907
+  }
+}
