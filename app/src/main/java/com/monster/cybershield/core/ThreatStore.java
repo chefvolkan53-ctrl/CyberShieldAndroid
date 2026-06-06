@@ -23,6 +23,10 @@ public final class ThreatStore {
     }
 
     public ThreatEvent add(String modelId, String title, String source, String target, String severity, double probability) {
+        return add(modelId, title, source, target, severity, probability, "warn");
+    }
+
+    public ThreatEvent add(String modelId, String title, String source, String target, String severity, double probability, String recommendedAction) {
         ThreatEvent event = new ThreatEvent(
                 UUID.randomUUID().toString(),
                 modelId,
@@ -32,7 +36,8 @@ public final class ThreatStore {
                 severity,
                 probability,
                 System.currentTimeMillis(),
-                "new"
+                "new",
+                recommendedAction
         );
         ArrayList<ThreatEvent> events = new ArrayList<>(list());
         events.add(event);
@@ -71,7 +76,7 @@ public final class ThreatStore {
         ArrayList<ThreatEvent> updated = new ArrayList<>();
         for (ThreatEvent event : list()) {
             if (event.id.equals(id)) {
-                updated.add(new ThreatEvent(event.id, event.modelId, event.title, event.source, event.target, event.severity, event.probability, event.createdAt, status));
+                updated.add(new ThreatEvent(event.id, event.modelId, event.title, event.source, event.target, event.severity, event.probability, event.createdAt, status, event.recommendedAction));
             } else {
                 updated.add(event);
             }

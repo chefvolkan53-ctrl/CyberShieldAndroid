@@ -161,6 +161,17 @@
       "accuracy": 0.8197950512,
       "recall": 0.0,
       "interventions": ["explain_only"]
+    },
+    {
+      "id": "mitm_arp",
+      "title": "Wi-Fi MITM / ARP Spoofing",
+      "asset": "models/mitm_arp_hybrid_detector.tflite",
+      "input_size": 32,
+      "outputs": ["mitm_probability"],
+      "threshold": 0.55,
+      "accuracy": 0.9981060606,
+      "recall": 0.9979338843,
+      "interventions": ["warn", "temporary_block", "require_vpn", "mark_wifi_suspicious"]
     }
   ]
 }

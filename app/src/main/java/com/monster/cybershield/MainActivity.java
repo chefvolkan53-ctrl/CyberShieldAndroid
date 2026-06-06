@@ -16,6 +16,7 @@ import android.widget.TextView;
 import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.core.BlocklistStore;
+import com.monster.cybershield.core.PolicyAssistantText;
 import com.monster.cybershield.model.ModelCatalog;
 import com.monster.cybershield.model.ModelSpec;
 
@@ -65,7 +66,7 @@ public class MainActivity extends Activity {
                 openThreats++;
             }
         }
-        root.addView(card("Risk paneli", "Acik olay: " + openThreats + " | Model: " + catalog.all().size() + " | Pil profili: dengeli"));
+        root.addView(card("Risk paneli", "Acik olay: " + openThreats + " | Algilama modeli: " + catalog.all().size() + " | Policy modeli: aktif | Pil profili: dengeli"));
 
         Button start = button("Korumayi baslat", new View.OnClickListener() {
             @Override
@@ -117,7 +118,7 @@ public class MainActivity extends Activity {
                 if (count++ >= 8) {
                     break;
                 }
-                View card = card(event.title, event.target + " | " + event.status + " | risk " + String.format(Locale.US, "%.0f%%", event.probability * 100.0));
+                View card = card(event.title, event.target + " | " + event.status + " | " + PolicyAssistantText.notificationSummary(event));
                 card.setOnClickListener(v -> {
                     Intent open = new Intent(MainActivity.this, InterventionActivity.class);
                     open.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);

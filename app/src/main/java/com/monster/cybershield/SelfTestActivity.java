@@ -15,6 +15,8 @@ import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.model.ModelCatalog;
 import com.monster.cybershield.model.ModelSpec;
+import com.monster.cybershield.model.PolicyDecision;
+import com.monster.cybershield.model.PolicyInterventionModel;
 import com.monster.cybershield.model.TfliteThreatModel;
 import com.monster.cybershield.model.ThreatScore;
 
@@ -78,6 +80,26 @@ public class SelfTestActivity extends Activity {
                 }
                 modelResults.put(item);
             }
+
+            JSONObject policyItem = new JSONObject();
+            policyItem.put("id", "cybershield_policy_intervention");
+            policyItem.put("title", "CyberShield Intervention Policy");
+            long policyStart = System.nanoTime();
+            try (PolicyInterventionModel policy = new PolicyInterventionModel(this)) {
+                ModelSpec spec = catalog.byId("network_attack");
+                ThreatScore synthetic = new ThreatScore("network_attack", "Network Attack", 0.82f, 0.82f, true, 0.72);
+                PolicyDecision decision = policy.recommend(catalog, spec, synthetic, "vpn_flow");
+                policyItem.put("status", "OK");
+                policyItem.put("elapsedMs", (System.nanoTime() - policyStart) / 1_000_000L);
+                policyItem.put("risk", decision.confidence);
+                policyItem.put("action", decision.action);
+                ok++;
+            } catch (Throwable t) {
+                policyItem.put("status", "FAIL");
+                policyItem.put("error", describe(t));
+                failed++;
+            }
+            modelResults.put(policyItem);
 
             ThreatStore store = new ThreatStore(this);
             ThreatEvent event = store.add("self_test", "Self-test threat", "diagnostic", "selftest.invalid", "medium", 0.91);
@@ -164,5 +186,18 @@ public class SelfTestActivity extends Activity {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private static String describe(Throwable throwable) {
+        StringBuilder builder = new StringBuilder();
+        Throwable current = throwable;
+        while (current != null) {
+            if (builder.length() > 0) {
+                builder.append(" <- ");
+            }
+            builder.append(current.getClass().getSimpleName()).append(": ").append(current.getMessage());
+            current = current.getCause();
+        }
+        return builder.toString();
     }
 }

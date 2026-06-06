@@ -1,0 +1,122 @@
+{
+  "feature_order": [
+    "source_id",
+    "model_id",
+    "target_type_id",
+    "risk_score",
+    "threshold",
+    "over_threshold",
+    "accuracy",
+    "recall",
+    "requires_user_confirmation",
+    "severity_id"
+  ],
+  "actions": {
+    "0": "allow",
+    "1": "explain_only",
+    "2": "warn",
+    "3": "temporary_block",
+    "4": "block_domain",
+    "5": "block_ip",
+    "6": "block_flow",
+    "7": "quarantine",
+    "8": "uninstall_prompt"
+  },
+  "scaler_mean": [
+    4.511450381679389,
+    6.623409669211196,
+    4.363867684478372,
+    0.560845802227656,
+    0.3861846867711793,
+    0.6513994910941476,
+    0.9247955076263757,
+    0.8285321080654329,
+    0.3333333333333333,
+    2.1653944020356235
+  ],
+  "scaler_scale": [
+    2.736148773391798,
+    4.0229192719098235,
+    2.4489531029725264,
+    0.31202175770460316,
+    0.21881233487311602,
+    0.47652722282828147,
+    0.06723458835245326,
+    0.3403901843492344,
+    0.47140452079103257,
+    1.4604622676696342
+  ],
+  "base_teacher_model": "Zennar/Deecon-SecurityAnalyst-1.5B",
+  "policy_accuracy": 0.9459459459459459,
+  "classification_report": {
+    "allow": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 5.0
+    },
+    "explain_only": {
+      "precision": 0.8809523809523809,
+      "recall": 0.9736842105263158,
+      "f1-score": 0.925,
+      "support": 38.0
+    },
+    "warn": {
+      "precision": 0.96875,
+      "recall": 1.0,
+      "f1-score": 0.9841269841269841,
+      "support": 31.0
+    },
+    "temporary_block": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 10.0
+    },
+    "block_domain": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 8.0
+    },
+    "block_ip": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "block_flow": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 8.0
+    },
+    "quarantine": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 8.0
+    },
+    "uninstall_prompt": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1-score": 1.0,
+      "support": 3.0
+    },
+    "accuracy": 0.9459459459459459,
+    "macro avg": {
+      "precision": 0.7610780423280423,
+      "recall": 0.7748538011695907,
+      "f1-score": 0.7676807760141093,
+      "support": 111.0
+    },
+    "weighted avg": {
+      "precision": 0.9054724367224368,
+      "recall": 0.9459459459459459,
+      "f1-score": 0.9248462748462749,
+      "support": 111.0
+    }
+  },
+  "purpose": "CyberShield on-device intervention recommendation policy model",
+  "note": "This TFLite model recommends defensive user-approved actions; it does not generate text."
+}

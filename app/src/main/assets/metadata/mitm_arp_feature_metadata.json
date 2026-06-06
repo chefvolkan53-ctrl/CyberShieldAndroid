@@ -1,0 +1,111 @@
+{
+  "model_file": "mitm_arp_hybrid_detector.tflite",
+  "feature_order": [
+    "wifi_connected",
+    "gateway_ip_present",
+    "gateway_arp_present",
+    "gateway_mac_known",
+    "gateway_mac_changed",
+    "gateway_mac_multi_ip_count",
+    "duplicate_ip_mac_count",
+    "arp_entry_count",
+    "unique_mac_count",
+    "arp_table_churn",
+    "new_mac_count",
+    "lost_mac_count",
+    "bssid_changed",
+    "ssid_hash",
+    "bssid_hash",
+    "gateway_ip_hash",
+    "gateway_mac_hash",
+    "seconds_since_gateway_change",
+    "private_gateway",
+    "gateway_mac_zero",
+    "gateway_mac_broadcast",
+    "gateway_mac_local_admin",
+    "arp_density",
+    "duplicate_ratio",
+    "gateway_seen_ratio",
+    "rule_score",
+    "vpn_active_hint",
+    "dns_to_gateway_hint",
+    "doh_during_change_hint",
+    "sensitive_flow_hint",
+    "network_age_minutes",
+    "bias"
+  ],
+  "feature_scale": [
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    64.0,
+    64.0,
+    16.0,
+    16.0,
+    16.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    7200.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1440.0,
+    1.0
+  ],
+  "threshold": 0.55,
+  "metrics": {
+    "accuracy": 0.9981060606060606,
+    "precision": 0.9979338842975206,
+    "recall": 0.9979338842975206,
+    "threshold": 0.55,
+    "report": {
+      "0": {
+        "precision": 0.9982517482517482,
+        "recall": 0.9982517482517482,
+        "f1-score": 0.9982517482517482,
+        "support": 572.0
+      },
+      "1": {
+        "precision": 0.9979338842975206,
+        "recall": 0.9979338842975206,
+        "f1-score": 0.9979338842975206,
+        "support": 484.0
+      },
+      "accuracy": 0.9981060606060606,
+      "macro avg": {
+        "precision": 0.9980928162746344,
+        "recall": 0.9980928162746344,
+        "f1-score": 0.9980928162746344,
+        "support": 1056.0
+      },
+      "weighted avg": {
+        "precision": 0.9981060606060606,
+        "recall": 0.9981060606060606,
+        "f1-score": 0.9981060606060606,
+        "support": 1056.0
+      }
+    }
+  },
+  "training_note": "Synthetic heuristic bootstrap dataset. Replace or fine-tune with local lab ARP spoof/MITM captures for production calibration.",
+  "intervention_guidance": {
+    "medium": "Warn user and mark Wi-Fi as suspicious.",
+    "high": "Require CyberShield VPN protection and temporary block suspicious gateway/flow.",
+    "critical": "Quarantine network target and advise leaving the Wi-Fi until verified."
+  }
+}

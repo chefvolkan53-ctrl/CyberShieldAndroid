@@ -12,6 +12,7 @@ public final class ThreatEvent {
     public final double probability;
     public final long createdAt;
     public final String status;
+    public final String recommendedAction;
 
     public ThreatEvent(
             String id,
@@ -22,7 +23,8 @@ public final class ThreatEvent {
             String severity,
             double probability,
             long createdAt,
-            String status
+            String status,
+            String recommendedAction
     ) {
         this.id = id;
         this.modelId = modelId;
@@ -33,6 +35,7 @@ public final class ThreatEvent {
         this.probability = probability;
         this.createdAt = createdAt;
         this.status = status;
+        this.recommendedAction = recommendedAction;
     }
 
     public JSONObject toJson() {
@@ -47,6 +50,7 @@ public final class ThreatEvent {
             json.put("probability", probability);
             json.put("createdAt", createdAt);
             json.put("status", status);
+            json.put("recommendedAction", recommendedAction);
         } catch (Exception ignored) {
         }
         return json;
@@ -62,7 +66,8 @@ public final class ThreatEvent {
                 json.optString("severity"),
                 json.optDouble("probability"),
                 json.optLong("createdAt"),
-                json.optString("status", "new")
+                json.optString("status", "new"),
+                json.optString("recommendedAction", "warn")
         );
     }
 }

@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.monster.cybershield.core.InterventionActions;
+import com.monster.cybershield.core.PolicyAssistantText;
 import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
 
@@ -27,6 +28,8 @@ public class InterventionActivity extends Activity {
     public static final String EXTRA_ACTION = "action";
     public static final String ACTION_BLOCK = "block";
     public static final String ACTION_QUARANTINE = "quarantine";
+    public static final String ACTION_TEMPORARY_BLOCK = "temporary_block";
+    public static final String ACTION_REMOVE = "remove";
 
     private ThreatEvent event;
     private ThreatStore store;
@@ -45,6 +48,10 @@ public class InterventionActivity extends Activity {
             confirmBlock();
         } else if (ACTION_QUARANTINE.equals(action)) {
             confirmQuarantine();
+        } else if (ACTION_TEMPORARY_BLOCK.equals(action)) {
+            confirmTemporaryBlock();
+        } else if (ACTION_REMOVE.equals(action)) {
+            confirmRemove();
         }
         render();
     }
@@ -63,6 +70,8 @@ public class InterventionActivity extends Activity {
         root.addView(text("Hedef: " + event.target, 14, Color.rgb(169, 182, 194), false));
         root.addView(text("Model: " + event.modelId, 14, Color.rgb(169, 182, 194), false));
         root.addView(text("Risk: " + String.format(Locale.US, "%.1f%%", event.probability * 100.0), 18, Color.rgb(245, 165, 36), true));
+        root.addView(text("CyberShield Asistani", 18, Color.rgb(125, 211, 252), true));
+        root.addView(text(PolicyAssistantText.assistantDetail(event), 15, Color.rgb(224, 242, 254), false));
         root.addView(text("Zaman: " + DateFormat.getDateTimeInstance().format(new Date(event.createdAt)), 14, Color.rgb(169, 182, 194), false));
         root.addView(text("Durum: " + event.status, 14, Color.rgb(32, 201, 151), true));
 
@@ -76,10 +85,7 @@ public class InterventionActivity extends Activity {
         root.addView(button("1 saat gecici engelle", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                InterventionActions.temporaryBlock(InterventionActivity.this, event);
-                Toast.makeText(InterventionActivity.this, "Gecici engel kaydedildi", Toast.LENGTH_SHORT).show();
-                event = store.find(event.id);
-                render();
+                confirmTemporaryBlock();
             }
         }));
         root.addView(button("Karantinaya al", new View.OnClickListener() {
@@ -151,6 +157,20 @@ public class InterventionActivity extends Activity {
                 .show();
     }
 
+    private void confirmTemporaryBlock() {
+        new AlertDialog.Builder(this)
+                .setTitle("Gecici engelleme uygulanacak")
+                .setMessage(event.target + " hedefi 1 saat gecici blok listesine eklenecek. Olay gecmisinden geri alinabilir.")
+                .setPositiveButton("1 saat engelle", (dialog, which) -> {
+                    InterventionActions.temporaryBlock(this, event);
+                    Toast.makeText(this, "Gecici engel kaydedildi", Toast.LENGTH_SHORT).show();
+                    event = store.find(event.id);
+                    render();
+                })
+                .setNegativeButton("Vazgec", null)
+                .show();
+    }
+
     private void confirmRemove() {
         new AlertDialog.Builder(this)
                 .setTitle("Kaldirma onayi")
@@ -193,4 +213,5 @@ public class InterventionActivity extends Activity {
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
+
 }

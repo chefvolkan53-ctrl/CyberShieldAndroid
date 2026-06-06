@@ -7,6 +7,8 @@ import android.os.Build;
 import com.monster.cybershield.CyberDefenseService;
 import com.monster.cybershield.model.ModelCatalog;
 import com.monster.cybershield.model.ModelSpec;
+import com.monster.cybershield.model.PolicyDecision;
+import com.monster.cybershield.model.PolicyInterventionModel;
 import com.monster.cybershield.model.TfliteThreatModel;
 import com.monster.cybershield.model.ThreatScore;
 
@@ -20,6 +22,7 @@ public final class ThreatEngine {
     private final FeatureSchema iotSchema;
     private final FeatureSchema pqcSchema;
     private final FeatureSchema socialUrlSchema;
+    private final PolicyInterventionModel policyModel;
 
     public ThreatEngine(Context context) {
         this.context = context.getApplicationContext();
@@ -31,6 +34,13 @@ public final class ThreatEngine {
         this.iotSchema = FeatureSchema.load(context, "iot_labels.json", 71);
         this.pqcSchema = FeatureSchema.load(context, "post_quantum_binary_labels.json", 32);
         this.socialUrlSchema = FeatureSchema.load(context, "social_url_metadata.json", 48);
+        PolicyInterventionModel loadedPolicy;
+        try {
+            loadedPolicy = new PolicyInterventionModel(context);
+        } catch (Throwable ignored) {
+            loadedPolicy = null;
+        }
+        this.policyModel = loadedPolicy;
     }
 
     public ThreatScore analyze(String modelId, float[] features, String source, String target, String title) {
@@ -41,7 +51,9 @@ public final class ThreatEngine {
         try (TfliteThreatModel model = new TfliteThreatModel(context, spec)) {
             ThreatScore score = model.run(features);
             if (score.actionable || shouldTreatAsActionable(spec, score)) {
-                raise(modelId, title, source, target, "high", Math.max(score.risk, score.confidence));
+                float probability = Math.max(score.risk, score.confidence);
+                PolicyDecision decision = decide(spec, score, source);
+                raise(modelId, title, source, target, severity(probability), probability, decision.action);
             }
             return score;
         }
@@ -94,7 +106,24 @@ public final class ThreatEngine {
         }
     }
 
-    private void raise(String modelId, String title, String source, String target, String severity, double probability) {
+    private PolicyDecision decide(ModelSpec spec, ThreatScore score, String source) {
+        if (policyModel != null) {
+            try {
+                return policyModel.recommend(catalog, spec, score, source);
+            } catch (Throwable ignored) {
+            }
+        }
+        float probability = Math.max(score.risk, score.confidence);
+        if (probability >= 0.80f) {
+            return new PolicyDecision("block_flow", 1.0f);
+        }
+        if (probability >= 0.55f) {
+            return new PolicyDecision("temporary_block", 1.0f);
+        }
+        return new PolicyDecision("warn", 1.0f);
+    }
+
+    private void raise(String modelId, String title, String source, String target, String severity, double probability, String recommendedAction) {
         Intent intent = new Intent(context, CyberDefenseService.class);
         intent.setAction(CyberDefenseService.ACTION_RAISE_THREAT);
         intent.putExtra(CyberDefenseService.EXTRA_MODEL_ID, modelId);
@@ -103,6 +132,7 @@ public final class ThreatEngine {
         intent.putExtra(CyberDefenseService.EXTRA_TARGET, target);
         intent.putExtra(CyberDefenseService.EXTRA_SEVERITY, severity);
         intent.putExtra(CyberDefenseService.EXTRA_PROBABILITY, probability);
+        intent.putExtra(CyberDefenseService.EXTRA_RECOMMENDED_ACTION, recommendedAction);
         if (Build.VERSION.SDK_INT >= 26) {
             context.startForegroundService(intent);
         } else {
@@ -115,5 +145,18 @@ public final class ThreatEngine {
             return false;
         }
         return score.risk == 0f && score.confidence >= spec.threshold;
+    }
+
+    private static String severity(float probability) {
+        if (probability >= 0.85f) {
+            return "critical";
+        }
+        if (probability >= 0.65f) {
+            return "high";
+        }
+        if (probability >= 0.40f) {
+            return "medium";
+        }
+        return "low";
     }
 }
