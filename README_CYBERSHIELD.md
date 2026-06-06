@@ -4,7 +4,7 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 
 ## Bu ilk surumde hazir olanlar
 
-- 14 TFLite model `assets/models` altinda paketlenir.
+- 16 TFLite model `assets/models` altinda paketlenir.
 - `model_catalog.json` model esiklerini, giris boyutlarini ve mudahale politikasini tutar.
 - `CyberDefenseService` foreground servis olarak arka planda dusuk guc profilinde calisir.
 - Tehdit bildirimi, ilgili `InterventionActivity` ekranina dogrudan gider.
@@ -22,6 +22,11 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - Android malware 9503 feature uretimi paket adi hash'i ile sinirli degil; manifest izinleri, activity/service/receiver/provider sayilari, debuggable/system flag'leri, cleartext flag'i ve supheli izin gruplari modele verilir.
 - `DefenseVpnService`: VPN TUN paketlerini okur, IPv4/UDP/TCP/DNS parser ile DNS/DoH modellerine ve flow tabanli Network/IoT/TLS/PQC analizine baglar, blok/whitelist politikasini uygular.
 - `SourceFieldTestActivity`: ADB ile cagrilabilen gizli saha testi; SMS izni, APK receiver, link scanner, VPN izin durumu ve 9503 APK feature uretimini raporlar.
+- `PolicyInterventionModel`: CyberShield policy TFLite modelini yukler; olay tipi, kaynak, risk ve hedef sinyallerinden profesyonel mudahale onerisi uretir.
+- `PolicyAssistantText`: ham aksiyon adlarini kullaniciya anlamli guvenlik diline cevirir; bildirim ve mudahale ekraninda gerekce, etki ve geri alma bilgisini gosterir.
+- `MitmArpMonitor`: Wi-Fi gateway MAC degisimi, ayni IP icin birden fazla MAC, ARP tablo dalgalanmasi, local-admin MAC ve broadcast/zero MAC gibi sinyalleri 32 feature olarak MITM/ARP TFLite modeline verir.
+- Wi-Fi MITM / ARP spoofing modulunde kural tabanli skor ile model riski birlestirilir; supheli Wi-Fi agini isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
+- Son cihaz self-test sonucu: 16/16 model OK.
 
 ## Android gercegi
 
@@ -36,3 +41,11 @@ Android, kullanici onayi olmadan baska uygulamalari silemez veya tum agi sessizc
 Android'de tum TCP/UDP trafigini interneti bozmadan 0.0.0.0/0 VPN uzerinden gecirmek icin kullanici-uzayi TCP/IP forwarding veya native `tun2socks` katmani gerekir. Bu makinedeki Android SDK'da NDK klasoru yok; bu yuzden native forwarding kutuphanesi derlenemedi. Bu projede guvenli TUN okuma, DNS/DoH/parser, flow tabanli feature uretimi, model baglantisi ve politika uygulamasi hazirdir; tam NAT/forwarding icin NDK veya guvenilir prebuilt native forwarding katmani eklenmelidir.
 
 Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan once forwarding katmani tamamlanmalidir.
+
+## Son guncelleme
+
+- CyberShield Policy Assistant TFLite modeli uygulamaya eklendi.
+- Wi-Fi MITM / ARP Spoofing icin hibrit kural + TFLite savunma modulu eklendi.
+- TensorFlow Lite runtime `2.17.0` surumune cikarildi.
+- Bildirimlerde ham "uyar" gibi ifadeler yerine profesyonel mudahale aciklamasi, risk gerekcesi ve geri alma bilgisi kullanilir.
+- MITM/ARP model skorlari sentetik/heuristic bootstrap veri setinden gelir; gercek lab trafiyle yeniden kalibrasyon onerilir.

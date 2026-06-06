@@ -4,11 +4,13 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 ## Temel yetenekler
 
-- 14 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
+- 16 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
 - Foreground servis ile arka planda otomatik savunma calisir.
 - Bildirimler dogrudan ilgili mudahale ekranina gider.
 - Mudahale secenekleri: uyar, engelle, 1 saat gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina yonlendir.
 - SMS/metin, URL, phishing HTML, APK statik sinyal, DNS, DoH, network flow, IoT/IIoT, TLS/session ve post-kuantum anomali alanlari kapsanir.
+- Wi-Fi MITM / ARP spoofing icin kural tabanli gateway/ARP kontrolu ile TFLite risk skoru birlestirilir.
+- CyberShield Policy Assistant modeli, tespit edilen olaya gore profesyonel mudahale onerisi, gerekce, etki ve geri alma bilgisini uretir.
 - Model yukleme olay bazlidir; pil/performans icin ayni anda sicak tutulan model sayisi sinirlanir.
 - Blok liste, gecici blok, whitelist ve son karari geri alma politikasi vardir.
 
@@ -30,8 +32,11 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | Post-Quantum Anomaly | 32 | 84.88% | 98.00% | PQC/TLS session sinyallerinde anomali odakli yuksek yakalama saglar. |
 | Post-Quantum Taxonomy | 32 | 83.30% | - | Siniflandirma/aciklama modeli; mudahale yerine olay aciklamasi icin kullanilir. |
 | Post-Quantum Subtype | 32 | 81.98% | - | Alt tur aciklamasi uretir; karar mekanizmasini destekler. |
+| CyberShield Policy Assistant | 16 | - | - | Tehdit tipi, kaynak, risk ve hedef sinyallerinden kullanici onayli mudahale onerisi uretir. |
+| Wi-Fi MITM / ARP Spoofing | 32 | 99.81% | 99.79% | Gateway MAC degisimi, IP/MAC cakismasi, ARP tablo dalgalanmasi ve model riskini birlestirir. |
 
 > Skorlar egitim/test veri setleri uzerinden olculmustur. Gercek saha trafiginde esik kalibrasyonu, loglama ve false-positive takibi gereklidir.
+> MITM/ARP modeli su anda sentetik/heuristic bootstrap veri setiyle egitildi; gercek lab ARP spoofing yakalamalariyla yeniden kalibre edilmesi onerilir.
 
 ## Egitim ve donusturme ozeti
 
@@ -45,7 +50,9 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
    - Social engineering: metin icin 2530, URL icin 48 feature.
 4. Modeller TFLite formatina cevrildi ve Android runtime uyumlulugu test edildi.
 5. Uygulama icinde `model_catalog.json` ile esik, dogruluk, recall, girdi boyutu ve mudahale politikasi merkezi hale getirildi.
-6. Telefonda self-test ile 14/14 modelin yuklendigi ve inference calistirdigi dogrulandi.
+6. Policy Assistant modeli, olay riskini kullaniciya uygulanabilir aksiyon diline ceviren ayri bir TFLite karar katmani olarak eklendi.
+7. MITM/ARP modeli, cihaz uzerindeki Wi-Fi gateway ve `/proc/net/arp` sinyallerinden 32 feature ureten hibrit monitor ile baglandi.
+8. Telefonda self-test ile 16/16 modelin yuklendigi ve inference calistirdigi dogrulandi.
 
 ## Savunma mimarisi
 
@@ -57,8 +64,10 @@ flowchart LR
     VPN[Defense VPN Parser] --> Flow[FlowTracker]
     VPN --> Engine
     Flow --> Engine
+    ARP[MITM/ARP Monitor] --> Engine
     Engine --> TFLite[TFLite Models]
-    TFLite --> Policy[Policy Engine]
+    TFLite --> Assistant[Policy Assistant Model]
+    Assistant --> Policy[Policy Engine]
     Policy --> Notify[Actionable Notification]
     Notify --> Intervention[Intervention Screen]
     Intervention --> Block[Block / Quarantine / Allow / Uninstall Intent]
@@ -71,15 +80,16 @@ flowchart LR
 - Domain/IP/port hedefleri blok/whitelist politikasina yazilir.
 - Bildirimdeki aksiyonlar olay detayina dogrudan gider.
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
+- MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 
 ## Android uygulama durumu
 
 - Paket adi: `com.monster.cybershield`
 - Min SDK: 26
 - Target SDK: 35
-- TFLite runtime: `org.tensorflow:tensorflow-lite:2.16.1`
+- TFLite runtime: `org.tensorflow:tensorflow-lite:2.17.0`
 - Test cihaz: Samsung Galaxy A56 (`SM_A566B`)
-- Son self-test: 14 model OK
+- Son self-test: 16 model OK
 - Launcher/adaptive icon eklendi.
 
 ## Uretim notu
