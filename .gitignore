@@ -8,5 +8,6 @@ local.properties
 *.jks
 *.keystore
 *.log
+training/outputs/
 .DS_Store
 Thumbs.db

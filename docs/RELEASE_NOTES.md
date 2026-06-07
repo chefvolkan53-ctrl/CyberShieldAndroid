@@ -18,11 +18,13 @@
 - arm64-v8a `libcybershield_forwarder.so` native tun2socks motoru paketlendi.
 - `DirectSocksProxy` ile yerel SOCKS cikisi, `VpnService.protect()` ve domain/IP/port bloklama hattı eklendi.
 - Native motor basariliysa `0.0.0.0/0` tam cihaz rotasi, basarisizsa guvenli telemetri fallback modu uygulanir.
+- `wifi_threat_detector.tflite` eklendi; ARP Poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing, SSL stripping ve CIC/CAP ag CSV'lerinden 916.777 ornekle egitildi.
+- `WifiThreatMonitor` eklendi; SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi ve Wi-Fi izinli Android sinyallerinden 48 feature uretir.
 
 ### Dogrulama
 
 - Samsung Galaxy A56 uzerinde release APK kuruldu.
-- TFLite self-test sonucu: 17/17 model OK.
+- Beklenen TFLite self-test sonucu: 18/18 model OK.
 - SMS ve bildirim izinleri granted.
 - Link scanner uyarisi bildirim ve mudahale aksiyonlariyla dogrulandi.
 - Galaxy A56 saha testinde `Native VPN forwarding kutuphanesi: true` ve `VPN modu: full_device_forwarding` dogrulandi.
@@ -31,3 +33,5 @@
 ### Bilinen uretim notu
 
 Tam internet forwarding arm64-v8a icin paketlendi. Diger ABI'ler icin native `.so` eklenmedikce uygulama guvenli telemetri moduna geri duser.
+
+Wi-Fi Threat Detector veri seti icinde cok yuksek skor verir; Android normal uygulamalari ham 802.11 monitor-mode frame okuyamadigi icin sahada deauth/beacon/Evil Twin sinyalleri dolayli SSID/BSSID/RSSI/gateway/ARP belirtileriyle izlenir.

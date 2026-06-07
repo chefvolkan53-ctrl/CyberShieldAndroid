@@ -18,6 +18,7 @@ import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.MitmArpMonitor;
 import com.monster.cybershield.core.PolicyAssistantText;
+import com.monster.cybershield.core.WifiThreatMonitor;
 import com.monster.cybershield.model.ModelCatalog;
 
 import java.util.Locale;
@@ -41,6 +42,7 @@ public class CyberDefenseService extends Service {
     private Handler worker;
     private ModelCatalog catalog;
     private MitmArpMonitor mitmArpMonitor;
+    private WifiThreatMonitor wifiThreatMonitor;
 
     @Override
     public void onCreate() {
@@ -48,6 +50,7 @@ public class CyberDefenseService extends Service {
         createChannels();
         catalog = ModelCatalog.load(this);
         mitmArpMonitor = new MitmArpMonitor(this);
+        wifiThreatMonitor = new WifiThreatMonitor(this);
         workerThread = new HandlerThread("cyber-defense-worker");
         workerThread.start();
         worker = new Handler(workerThread.getLooper());
@@ -93,6 +96,9 @@ public class CyberDefenseService extends Service {
             public void run() {
                 if (mitmArpMonitor != null) {
                     mitmArpMonitor.scanAndRaise();
+                }
+                if (wifiThreatMonitor != null) {
+                    wifiThreatMonitor.scanAndRaise();
                 }
                 updateGuardNotification();
                 worker.postDelayed(this, 60 * 1000L);
@@ -202,7 +208,11 @@ public class CyberDefenseService extends Service {
         if ("uninstall_prompt".equals(recommendedAction)) {
             return InterventionActivity.ACTION_REMOVE;
         }
-        if ("warn".equals(recommendedAction) || "explain_only".equals(recommendedAction) || "allow".equals(recommendedAction)) {
+        if ("warn".equals(recommendedAction)
+                || "explain_only".equals(recommendedAction)
+                || "allow".equals(recommendedAction)
+                || "require_vpn".equals(recommendedAction)
+                || "mark_wifi_suspicious".equals(recommendedAction)) {
             return "";
         }
         return InterventionActivity.ACTION_BLOCK;

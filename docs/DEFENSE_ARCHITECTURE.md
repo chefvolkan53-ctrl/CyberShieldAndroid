@@ -21,6 +21,7 @@ Oncelikler:
 | APK kurulumu/degisimi | `PackageThreatReceiver` | Android malware |
 | VPN paketleri | `DefenseVpnService` + native forwarder | DNS, DoH L1/L2, Network, IoT, TLS/PQC |
 | Flow istatistikleri | `FlowTracker` | Network 79, IoT 71, anomaly/PQC |
+| Wi-Fi baglam sinyalleri | `WifiThreatMonitor` | Wi-Fi Threat 48, MITM/ARP 32 |
 
 ## Karar akisi
 
@@ -66,8 +67,13 @@ flowchart TD
     Protect --> Internet["Wi-Fi / mobile internet"]
     AndroidVpn --> Parser["Packet parser / FlowTracker"]
     Parser --> Models["TFLite DNS / DoH / Network / IoT / TLS models"]
+    Wifi["WifiThreatMonitor"] --> Models
     Models --> Intervention["Notification + intervention screen"]
 ```
+
+## Wi-Fi Threat Monitor
+
+`WifiThreatMonitor`, Android'in normal uygulama sinirlari icinde erisebildigi sinyallerden calisir: SSID, BSSID, RSSI, Wi-Fi guvenlik tipi, gateway IP/MAC, `/proc/net/arp`, ayni SSID icin BSSID degisimi, gateway MAC degisimi ve ARP tablo oynakligi. Model egitimi WPA3/802.11 frame CSV'lerinden yararlanir, fakat sahada ham monitor-mode deauth/beacon frame okunamaz; bu nedenle Evil Twin, deauth/disassoc ve beacon flood riskleri dolayli belirtilerle skorlanir.
 
 Native motor yoksa veya baslatilamazsa:
 

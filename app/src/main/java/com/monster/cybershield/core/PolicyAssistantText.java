@@ -12,6 +12,8 @@ public final class PolicyAssistantText {
         if ("block_ip".equals(action)) return "IP erisimini kes";
         if ("block_flow".equals(action)) return "Riskli ag akisini kes";
         if ("quarantine".equals(action)) return "Karantinaya al";
+        if ("require_vpn".equals(action)) return "VPN korumasini zorunlu kullan";
+        if ("mark_wifi_suspicious".equals(action)) return "Wi-Fi agini supheli isaretle";
         if ("uninstall_prompt".equals(action)) return "Kaldirma onayi iste";
         if ("allow".equals(action)) return "Guvenli olarak isaretle";
         if ("explain_only".equals(action)) return "Incele ve kayda al";
@@ -45,6 +47,12 @@ public final class PolicyAssistantText {
             }
             return "Bu Wi-Fi agi icin gateway kimligi izlenmeli; hassas islemlerden once VPN korumasini acmani oneriyorum.";
         }
+        if ("wifi_threat".equals(event.modelId)) {
+            if ("temporary_block".equals(action) || "block_flow".equals(action)) {
+                return "Bu Wi-Fi aginda Evil Twin, deauth, DNS/ARP spoofing veya SSL stripping benzeri riskler gorunuyor; ag tabanli erisimi gecici olarak sinirlamani oneriyorum.";
+            }
+            return "Bu Wi-Fi agi supheli gorunuyor; hassas islemleri erteleyip CyberShield VPN korumasiyla devam etmeni oneriyorum.";
+        }
         if ("temporary_block".equals(action)) {
             return target + " icin kalici karar vermeden once 1 saatlik gecici engel oneriyorum.";
         }
@@ -76,6 +84,9 @@ public final class PolicyAssistantText {
         String model = event.modelId == null ? "ilgili model" : event.modelId;
         String source = event.source == null ? "otomatik koruma" : event.source;
         String percent = String.format(Locale.US, "%.1f%%", event.probability * 100.0);
+        if ("wifi_threat".equals(event.modelId)) {
+            return "Wi-Fi tehdit modeli " + source + " kaynaginda " + percent + " risk hesapladi; sinyal SSID/BSSID degisimi, RSSI dalgalanmasi, ARP tutarsizligi, DNS/HTTP downgrade ipuclari ve WPA3 saldiri veri setlerinden turetilen risk ozelliklerinden olusur.";
+        }
         if ("mitm_arp".equals(event.modelId)) {
             return "Gateway/ARP kural motoru ve MITM risk modeli " + source + " kaynaginda " + percent + " risk hesapladı; bu sinyal gateway MAC degisimi, ARP tablo oynakligi veya ayni kimligin birden fazla hedefle gorunmesi gibi belirtilerden uretilir.";
         }
@@ -97,6 +108,8 @@ public final class PolicyAssistantText {
         if ("block_ip".equals(action)) return "VPN/firewall politikasi uygunsa IP erisimi engellenir.";
         if ("block_flow".equals(action)) return "Yalnizca riskli ag akisi engellenir; tum internet trafigi kapatilmaz.";
         if ("quarantine".equals(action)) return "Hedef blok listesine alinir ve tekrar baglanti kurmasi sinirlanir.";
+        if ("require_vpn".equals(action)) return "Hassas trafik CyberShield VPN korumasi altinda tutulur; ag degistirilmezse risk izlenmeye devam eder.";
+        if ("mark_wifi_suspicious".equals(action)) return "Ag supheli olarak kaydedilir ve ayni agda benzer sinyaller tekrarlandiginda uyarilar sertlesir.";
         if ("uninstall_prompt".equals(action)) return "Sistem kaldirma ekrani acilir; uygulama kullanici onayi olmadan silinmez.";
         if ("allow".equals(action)) return "Hedef guvenli listeye alinir ve ayni hedef icin yeni uyarilar azalir.";
         if ("explain_only".equals(action)) return "Engelleme uygulanmaz; olay gecmisinde denetlenebilir kayit tutulur.";

@@ -16,6 +16,7 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 | Social engineering | SMS/metin/URL CSV | Metin davranisi ve URL feature modelleri | Urgency, fear, reward, bank/login/OTP sinyalleri |
 | Phishing | HTML/URL CSV | 40 feature phishing modeli | Form, parola, iframe, script, mixed-content |
 | Network | Network attack CSV | 79 flow feature | Paket/byte, sure, pps/bps, TCP flag, endpoint |
+| Wi-Fi Threat | ARP Poison/flood, WPA3 attacks, CIC/CAP Wi-Fi/network CSV | 48 Android-uyumlu Wi-Fi risk feature | SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi, DNS/HTTP downgrade ipuclari |
 | IoT/IIoT | IoT/IIoT attack CSV | 71 flow/endpoint feature | Flow ve endpoint izolasyon karari |
 | TLS/PQC | Attack/Post-Quantum CSV | Session/anomaly/taxonomy modelleri | TLS/DoH/PQC session risk aciklamasi |
 
@@ -37,6 +38,7 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 | post_quantum | 0.8488 | 0.9800 | 0.3959 | PQC anomali |
 | post_quantum_taxonomy | 0.8330 | N/A | 0.0000 | Aciklama/siniflandirma |
 | post_quantum_subtype | 0.8198 | N/A | 0.0000 | Alt tur aciklama |
+| wifi_threat | 1.0000* | 1.0000* | 0.6500 | Wi-Fi Evil Twin, ARP/DNS spoofing, deauth/disassoc, beacon flood, SSL stripping riski |
 
 ## Siber savunmadaki etkisi
 
@@ -57,4 +59,6 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 - Egitim skorlarinin tamamı veri seti icindeki test bolumlerinden gelir; gercek saha trafiginde dagilim farki olabilir.
 - Android malware 9503 feature seti Android cihazda manifest/meta veri ile yaklastirilir; tam statik APK disassembler baglanirsa kalite artar.
 - Network/IoT feature uretimi flow istatistikleriyle guclendirildi; tam PCAP seviyesinde tum kolonlar icin daha fazla protokol ozelligi eklenebilir.
-- Tam VPN forwarding icin native forwarding katmani gereklidir.
+- Wi-Fi Threat Detector egitim/test ayriminda cok yuksek skor verir; veri seti lab ortaminda etiketleri belirgin oldugu icin saha skorunu abartmamak gerekir.
+- Android normal uygulamalari ham 802.11 monitor-mode frame okuyamaz; Wi-Fi saldiri modeli sahada Android'in erisebildigi SSID/BSSID/RSSI/gateway/ARP/VPN-DNS belirtileriyle calisir.
+- Tam VPN forwarding icin native forwarding katmani gerekir; arm64-v8a native motor paketlenmistir.

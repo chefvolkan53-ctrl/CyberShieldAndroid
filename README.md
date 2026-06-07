@@ -4,12 +4,12 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 ## Temel yetenekler
 
-- 17 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
+- 18 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
 - Foreground servis ile arka planda otomatik savunma calisir.
 - Bildirimler dogrudan ilgili mudahale ekranina gider.
 - Mudahale secenekleri: uyar, engelle, 1 saat gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina yonlendir.
 - SMS/metin, URL, phishing HTML, APK statik sinyal, DNS, DoH, network flow, IoT/IIoT, TLS/session ve post-kuantum anomali alanlari kapsanir.
-- Wi-Fi MITM / ARP spoofing icin kural tabanli gateway/ARP kontrolu ile TFLite risk skoru birlestirilir.
+- Wi-Fi MITM / ARP spoofing ve genis Wi-Fi saldiri riski icin gateway/ARP/RSSI/BSSID kontrolu ile TFLite risk skoru birlestirilir.
 - CyberShield Policy Assistant modeli, tespit edilen olaya gore profesyonel mudahale onerisi, gerekce, etki ve geri alma bilgisini uretir.
 - Model yukleme olay bazlidir; pil/performans icin ayni anda sicak tutulan model sayisi sinirlanir.
 - Blok liste, gecici blok, whitelist ve son karari geri alma politikasi vardir.
@@ -39,9 +39,11 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | Post-Quantum Subtype | 32 | 81.98% | - | Alt tur aciklamasi uretir; karar mekanizmasini destekler. |
 | CyberShield Policy Assistant | 16 | - | - | Tehdit tipi, kaynak, risk ve hedef sinyallerinden kullanici onayli mudahale onerisi uretir. |
 | Wi-Fi MITM / ARP Spoofing | 32 | 99.81% | 99.79% | Gateway MAC degisimi, IP/MAC cakismasi, ARP tablo dalgalanmasi ve model riskini birlestirir. |
+| Wi-Fi Threat Detector | 48 | 100.00%* | 100.00%* | ARP poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing ve SSL stripping veri setlerinden turetilen Wi-Fi riskini skorlar. |
 
 > Skorlar egitim/test veri setleri uzerinden olculmustur. Gercek saha trafiginde esik kalibrasyonu, loglama ve false-positive takibi gereklidir.
 > MITM/ARP modeli su anda sentetik/heuristic bootstrap veri setiyle egitildi; gercek lab ARP spoofing yakalamalariyla yeniden kalibre edilmesi onerilir.
+> Wi-Fi Threat Detector skoru veri seti icinde cok yuksektir; Android normal uygulamalari ham 802.11 monitor-mode frame okuyamadigi icin model Android'de SSID/BSSID/RSSI/gateway/ARP/VPN-DNS ipuclariyla uygulanir ve saha esigi 0.65 olarak baslatilir.
 > StealthPhisher2025 modelinde ham `URL`, `Domain`, `TLD` stringleri ve dis skor gibi duran `WAPLegitimate/WAPPhishing` alanlari ezberleme/sizinti riskine karsi modele alinmadi; bunlar yerine 59 uretilebilir sayisal ozellik kullanildi.
 
 ## Egitim ve donusturme ozeti
@@ -61,7 +63,8 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 8. StealthPhisher2025 modeli 336.749 satirlik dengeli phishing veri setiyle egitildi; esik `0.2478628457` olarak kalibre edildi.
 9. Flow feature cikarimi, network ve IoT metadata kolon adlarina gore daha birebir map edilecek sekilde genisletildi.
 10. APK statik feature cikarimi, Android PackageInfo disinda APK zip/dex/string sinyallerini de kullanacak sekilde genisletildi.
-11. Telefonda self-test ile 17/17 modelin yuklendigi ve inference calistirdigi dogrulandi.
+11. Wi-Fi veri setlerinden 916.777 ornekle 48 feature'li `wifi_threat_detector.tflite` egitildi ve uygulamaya baglandi.
+12. Telefonda self-test ile 18/18 modelin yuklendigi ve inference calistirdigi dogrulanmalidir.
 
 ## Savunma mimarisi
 
@@ -78,6 +81,7 @@ flowchart LR
     VPN --> Engine
     Flow --> Engine
     ARP[MITM/ARP Monitor] --> Engine
+    WIFI[Wi-Fi Threat Monitor] --> Engine
     Engine --> TFLite[TFLite Models]
     TFLite --> Assistant[Policy Assistant Model]
     Assistant --> Policy[Policy Engine]
@@ -95,6 +99,7 @@ flowchart LR
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
 - Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri yerel SOCKS koprusunde dusurulur.
 - MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
+- Wi-Fi Threat Monitor SSID/BSSID, RSSI, guvenlik tipi, gateway MAC, ARP tablo oynakligi ve DNS/HTTP downgrade ipuclarindan 48 feature uretir; Android'in ham 802.11 frame siniri nedeniyle deauth/beacon/Evil Twin sinyalleri sahada dolayli belirtilerle yaklasiklanir.
 
 ## Android uygulama durumu
 
@@ -103,7 +108,7 @@ flowchart LR
 - Target SDK: 35
 - TFLite runtime: `org.tensorflow:tensorflow-lite:2.17.0`
 - Test cihaz: Samsung Galaxy A56 (`SM_A566B`)
-- Son self-test: 17 model OK
+- Son beklenen self-test: 18 model OK
 - Launcher/adaptive icon eklendi.
 
 ## VPN ve Uretim Notu

@@ -40,9 +40,11 @@ public class OnboardingActivity extends Activity {
         root.addView(text("Otomatik koruma icin gerekli izinleri ac. Yikici islemler yine kullanici onayi ile uygulanir.", 14, Color.rgb(169, 182, 194), false));
         root.addView(status("Bildirim", hasNotificationPermission()));
         root.addView(status("SMS korumasi", hasSmsPermission()));
+        root.addView(status("Wi-Fi risk izni", hasWifiRiskPermission()));
         root.addView(status("VPN", VpnService.prepare(this) == null));
         root.addView(button(hasNotificationPermission() ? "Bildirim izni acik" : "Bildirim izni ver", v -> requestNotificationPermission()));
         root.addView(button(hasSmsPermission() ? "SMS korumasi acik" : "SMS korumasi izni ver", v -> requestSmsPermission()));
+        root.addView(button(hasWifiRiskPermission() ? "Wi-Fi risk izni acik" : "Wi-Fi risk izni ver", v -> requestWifiRiskPermission()));
         root.addView(button("SMS izin ayarini ac", v -> openAppSettings()));
         root.addView(button("VPN korumasini etkinlestir", v -> requestVpnPermission()));
         root.addView(button("Pil optimizasyonundan muaf tut", v -> openBatteryOptimization()));
@@ -66,6 +68,15 @@ public class OnboardingActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS}, 301);
         } else {
             Toast.makeText(this, "SMS korumasi zaten acik", Toast.LENGTH_SHORT).show();
+            render();
+        }
+    }
+
+    private void requestWifiRiskPermission() {
+        if (!hasWifiRiskPermission()) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 302);
+        } else {
+            Toast.makeText(this, "Wi-Fi risk izni zaten acik", Toast.LENGTH_SHORT).show();
             render();
         }
     }
@@ -145,6 +156,10 @@ public class OnboardingActivity extends Activity {
     private boolean hasSmsPermission() {
         return checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
                 && checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasWifiRiskPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
     private TextView status(String label, boolean enabled) {
