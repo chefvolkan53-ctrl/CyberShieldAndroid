@@ -29,6 +29,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".SecurityUpdateActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".OnboardingActivity"
             android:exported="false" />
 

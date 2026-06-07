@@ -171,6 +171,12 @@ public class MainActivity extends Activity {
                 });
             }
         }));
+        root.addView(secondaryButton("Guncelleme detaylari", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SecurityUpdateActivity.class));
+            }
+        }));
 
         addSection("Son tehditler");
         if (activeEvents.isEmpty()) {

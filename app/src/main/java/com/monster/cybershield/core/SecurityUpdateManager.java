@@ -3,6 +3,7 @@ package com.monster.cybershield.core;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -14,6 +15,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 
 import com.monster.cybershield.R;
+import com.monster.cybershield.SecurityUpdateActivity;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -118,6 +120,7 @@ public final class SecurityUpdateManager {
             File target = store.feedFile(item.optString("id"));
             if (downloadVerifyAndInstall(item, target, MAX_FEED_BYTES)) {
                 store.recordFeedVersion(item.optString("id"), item.optString("version"));
+                recordFeedDetails(item.optString("id"), item.optString("version"), target);
                 applied++;
             }
         }
@@ -216,6 +219,28 @@ public final class SecurityUpdateManager {
         }
         installAtomically(data, target);
         return true;
+    }
+
+    private void recordFeedDetails(String feedId, String version, File target) {
+        if (target == null || !target.isFile()) {
+            return;
+        }
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(target.toPath());
+            JSONObject root = new JSONObject(new String(data, StandardCharsets.UTF_8));
+            store.recordFeedSummary(
+                    feedId,
+                    version,
+                    length(root.optJSONArray("malicious_domains")),
+                    length(root.optJSONArray("malicious_ips")),
+                    length(root.optJSONArray("malicious_cidrs")),
+                    length(root.optJSONArray("phishing_patterns")),
+                    length(root.optJSONArray("doh_endpoints")),
+                    length(root.optJSONArray("risky_ports")),
+                    length(root.optJSONArray("exploited_cves"))
+            );
+        } catch (Exception ignored) {
+        }
     }
 
     private void installAtomically(byte[] data, File target) throws Exception {
@@ -342,12 +367,27 @@ public final class SecurityUpdateManager {
             Notification notification = new Notification.Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.mipmap.ic_launcher)
                     .setContentTitle("CyberShield guncellendi")
-                    .setContentText("Guvenlik veritabani ve modeller kontrol edildi: " + status)
+                    .setContentText("Detaylari gormek icin dokun: " + status)
+                    .setContentIntent(updateDetailsIntent())
                     .setAutoCancel(true)
                     .build();
             manager.notify(8801, notification);
         } catch (Exception ignored) {
         }
+    }
+
+    private PendingIntent updateDetailsIntent() {
+        Intent intent = new Intent(context, SecurityUpdateActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= 23) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        return PendingIntent.getActivity(context, 8801, intent, flags);
+    }
+
+    private static int length(JSONArray array) {
+        return array == null ? 0 : array.length();
     }
 
     private static String safe(String value) {

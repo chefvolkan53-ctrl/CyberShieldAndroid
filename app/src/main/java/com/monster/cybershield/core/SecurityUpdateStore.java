@@ -121,6 +121,37 @@ public final class SecurityUpdateStore {
         prefs.edit().putString("feed_version:" + normalize(feedId), safe(version)).apply();
     }
 
+    public void recordFeedSummary(String feedId, String version, int domains, int ips, int cidrs, int phishingPatterns, int dohEndpoints, int riskyPorts, int cves) {
+        prefs.edit()
+                .putString("last_feed_id", safe(feedId))
+                .putString("last_feed_version", safe(version))
+                .putInt("last_feed_domains", domains)
+                .putInt("last_feed_ips", ips)
+                .putInt("last_feed_cidrs", cidrs)
+                .putInt("last_feed_phishing_patterns", phishingPatterns)
+                .putInt("last_feed_doh_endpoints", dohEndpoints)
+                .putInt("last_feed_risky_ports", riskyPorts)
+                .putInt("last_feed_cves", cves)
+                .apply();
+    }
+
+    public String updateDetails() {
+        String feedId = prefs.getString("last_feed_id", "");
+        String version = prefs.getString("last_feed_version", "");
+        if (feedId == null || feedId.isEmpty()) {
+            return "Henuz indirilen guncelleme paketi yok.";
+        }
+        return "Paket: " + feedId
+                + "\nSurum: " + version
+                + "\nZararli domain: " + prefs.getInt("last_feed_domains", 0)
+                + "\nZararli IP: " + prefs.getInt("last_feed_ips", 0)
+                + "\nZararli CIDR/IP blok: " + prefs.getInt("last_feed_cidrs", 0)
+                + "\nPhishing kalibi: " + prefs.getInt("last_feed_phishing_patterns", 0)
+                + "\nDoH endpoint: " + prefs.getInt("last_feed_doh_endpoints", 0)
+                + "\nRiskli port: " + prefs.getInt("last_feed_risky_ports", 0)
+                + "\nCISA KEV CVE: " + prefs.getInt("last_feed_cves", 0);
+    }
+
     public String summary() {
         String status = prefs.getString("last_status", "henuz kontrol edilmedi");
         String error = prefs.getString("last_error", "");
