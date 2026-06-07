@@ -14,6 +14,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 - Model yukleme olay bazlidir; pil/performans icin ayni anda sicak tutulan model sayisi sinirlanir.
 - Blok liste, gecici blok, whitelist ve son karari geri alma politikasi vardir.
 - arm64-v8a native tun2socks forwarding motoru paketlidir; VPN izni verildiginde `0.0.0.0/0` tam cihaz rotasi acilir ve TCP/UDP trafik yerel SOCKS koprusu uzerinden internete iletilir.
+- Supheli Wi-Fi durumunda strict VPN koruma modu devreye girer; VPN izni daha once verildiyse koruma otomatik baslar, bloklu IP/domain/port ve riskli HTTP downgrade akisleri cihaz cikisinda dusurulur.
 - Network/IoT feature uretimi, yon bazli flow istatistikleri, TCP flag/window, TTL, IAT, active/idle ve payload/header sinyalleriyle CICFlowMeter tarzina yaklastirildi.
 - APK feature uretimi, kurulu APK zip yapisi, dex/native lib/asset/suspicious entry sayilari ve sinirli statik string sinyalleriyle genisletildi.
 - Model esikleri saha/lab testlerinden sonra `CalibrationActivity` ile kalici olarak kalibre edilebilir.
@@ -97,7 +98,8 @@ flowchart LR
 - Domain/IP/port hedefleri blok/whitelist politikasina yazilir.
 - Bildirimdeki aksiyonlar olay detayina dogrudan gider.
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
-- Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri yerel SOCKS koprusunde dusurulur.
+- Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari yerel SOCKS koprusunde dusurulur.
+- Supheli Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; guvenli liste bu karari geri alabilir.
 - MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 - Wi-Fi Threat Monitor SSID/BSSID, RSSI, guvenlik tipi, gateway MAC, ARP tablo oynakligi ve DNS/HTTP downgrade ipuclarindan 48 feature uretir; Android'in ham 802.11 frame siniri nedeniyle deauth/beacon/Evil Twin sinyalleri sahada dolayli belirtilerle yaklasiklanir.
 

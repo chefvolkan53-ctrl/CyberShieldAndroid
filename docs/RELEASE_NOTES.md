@@ -20,6 +20,7 @@
 - Native motor basariliysa `0.0.0.0/0` tam cihaz rotasi, basarisizsa guvenli telemetri fallback modu uygulanir.
 - `wifi_threat_detector.tflite` eklendi; ARP Poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing, SSL stripping ve CIC/CAP ag CSV'lerinden 916.777 ornekle egitildi.
 - `WifiThreatMonitor` eklendi; SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi ve Wi-Fi izinli Android sinyallerinden 48 feature uretir.
+- Telefon-ustu mudahale guclendirildi: supheli Wi-Fi strict VPN modu, otomatik VPN baslatma, DNS sorgu adi bloklama, URL-domain normalizasyonu ve HTTP downgrade engelleme eklendi.
 
 ### Dogrulama
 

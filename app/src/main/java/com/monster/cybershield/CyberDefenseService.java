@@ -9,6 +9,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.VpnService;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -18,6 +19,7 @@ import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.MitmArpMonitor;
 import com.monster.cybershield.core.PolicyAssistantText;
+import com.monster.cybershield.core.ProtectionPolicyStore;
 import com.monster.cybershield.core.WifiThreatMonitor;
 import com.monster.cybershield.model.ModelCatalog;
 
@@ -120,7 +122,30 @@ public class CyberDefenseService extends Service {
             return;
         }
         ThreatEvent event = new ThreatStore(this).add(modelId, title, source, target, severity, probability, recommendedAction);
+        enforcePhoneProtection(event);
         notifyThreat(event);
+    }
+
+    private void enforcePhoneProtection(ThreatEvent event) {
+        if ("wifi_threat".equals(event.modelId) || "mitm_arp".equals(event.modelId)) {
+            new ProtectionPolicyStore(this).requireStrictVpn(event.modelId + ":" + event.target, 2 * 60 * 60 * 1000L);
+        }
+        if ("require_vpn".equals(event.recommendedAction)
+                || "block_flow".equals(event.recommendedAction)
+                || "block_domain".equals(event.recommendedAction)
+                || "block_ip".equals(event.recommendedAction)
+                || "temporary_block".equals(event.recommendedAction)) {
+            startVpnIfAlreadyConsented();
+        }
+    }
+
+    private void startVpnIfAlreadyConsented() {
+        try {
+            if (VpnService.prepare(this) == null) {
+                startService(new Intent(this, DefenseVpnService.class));
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private Notification buildGuardNotification() {
@@ -211,9 +236,11 @@ public class CyberDefenseService extends Service {
         if ("warn".equals(recommendedAction)
                 || "explain_only".equals(recommendedAction)
                 || "allow".equals(recommendedAction)
-                || "require_vpn".equals(recommendedAction)
                 || "mark_wifi_suspicious".equals(recommendedAction)) {
             return "";
+        }
+        if ("require_vpn".equals(recommendedAction)) {
+            return InterventionActivity.ACTION_REQUIRE_VPN;
         }
         return InterventionActivity.ACTION_BLOCK;
     }

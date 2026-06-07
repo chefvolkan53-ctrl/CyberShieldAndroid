@@ -2,6 +2,7 @@ package com.monster.cybershield.core;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -219,6 +220,28 @@ public final class BlocklistStore {
     }
 
     private static String normalize(String target) {
-        return target == null ? "" : target.trim().toLowerCase();
+        if (target == null) {
+            return "";
+        }
+        String value = target.trim().toLowerCase();
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            try {
+                Uri uri = Uri.parse(value);
+                String host = uri.getHost();
+                if (host != null && !host.trim().isEmpty()) {
+                    int port = uri.getPort();
+                    return port > 0 ? host.toLowerCase() + ":" + port : host.toLowerCase();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (value.startsWith("www.")) {
+            return value.substring(4);
+        }
+        int slash = value.indexOf('/');
+        if (slash > 0 && value.indexOf(' ') < 0) {
+            value = value.substring(0, slash);
+        }
+        return value;
     }
 }

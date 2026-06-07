@@ -40,6 +40,7 @@ Oncelikler:
 - Blok/karantina hedefleri app storage icinde saklanir.
 - Whitelist karari model uyarilarini bastirabilir.
 - Son karar geri alinabilir.
+- Supheli Wi-Fi veya yuksek riskli ag olayi strict VPN koruma penceresi acar; VPN izni varsa servis otomatik baslatilir.
 
 ## VPN durumu
 
@@ -53,7 +54,8 @@ Mevcut VPN servisinde:
 - IPv4, TCP, UDP ve DNS paketleri parse edilir.
 - DNS/DoH tespitleri modele verilir.
 - Flow bazli paket/byte/sure/flag istatistikleri tutulur.
-- Blok listeye dusen domain/IP/port hedefleri SOCKS koprusunde dusurulur.
+- Blok listeye dusen domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari SOCKS koprusunde dusurulur.
+- Strict Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; allowlist bu karari hedef bazinda bypass edebilir.
 
 ```mermaid
 flowchart TD
@@ -74,6 +76,8 @@ flowchart TD
 ## Wi-Fi Threat Monitor
 
 `WifiThreatMonitor`, Android'in normal uygulama sinirlari icinde erisebildigi sinyallerden calisir: SSID, BSSID, RSSI, Wi-Fi guvenlik tipi, gateway IP/MAC, `/proc/net/arp`, ayni SSID icin BSSID degisimi, gateway MAC degisimi ve ARP tablo oynakligi. Model egitimi WPA3/802.11 frame CSV'lerinden yararlanir, fakat sahada ham monitor-mode deauth/beacon frame okunamaz; bu nedenle Evil Twin, deauth/disassoc ve beacon flood riskleri dolayli belirtilerle skorlanir.
+
+Risk esigi asilinca `ProtectionPolicyStore` agi supheli olarak isaretler ve iki saatlik strict VPN koruma penceresi acar. Kullanici daha once VPN izni verdiyse CyberShield bu pencere icinde tam cihaz VPN'ini otomatik baslatir; izin yoksa bildirim dogrudan VPN onay ekranina yonlendirir.
 
 Native motor yoksa veya baslatilamazsa:
 

@@ -30,6 +30,7 @@ public class InterventionActivity extends Activity {
     public static final String ACTION_QUARANTINE = "quarantine";
     public static final String ACTION_TEMPORARY_BLOCK = "temporary_block";
     public static final String ACTION_REMOVE = "remove";
+    public static final String ACTION_REQUIRE_VPN = "require_vpn";
     private static final int REQ_VPN = 501;
 
     private ThreatEvent event;
@@ -53,6 +54,8 @@ public class InterventionActivity extends Activity {
             confirmTemporaryBlock();
         } else if (ACTION_REMOVE.equals(action)) {
             confirmRemove();
+        } else if (ACTION_REQUIRE_VPN.equals(action)) {
+            requestVpnPermission();
         }
         render();
     }

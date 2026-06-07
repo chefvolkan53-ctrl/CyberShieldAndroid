@@ -46,6 +46,9 @@ public final class WifiThreatMonitor {
         if (risk < 0.65f) {
             return;
         }
+        ProtectionPolicyStore policy = new ProtectionPolicyStore(context);
+        policy.markSuspiciousWifi(observation.networkKey, observation.ssid, observation.gatewayIp, risk);
+        policy.requireStrictVpn("wifi_threat:" + observation.ssid + ":" + observation.gatewayIp, 2 * 60 * 60 * 1000L);
         long now = System.currentTimeMillis();
         String cooldownKey = "last_alert_" + observation.networkKey;
         if (now - prefs.getLong(cooldownKey, 0L) < ALERT_COOLDOWN_MS) {

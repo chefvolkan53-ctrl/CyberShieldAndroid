@@ -112,9 +112,14 @@ public final class ThreatEngine {
     private PolicyDecision decide(ModelSpec spec, ThreatScore score, String source) {
         if (policyModel != null) {
             try {
-                return policyModel.recommend(catalog, spec, score, source, calibrationStore.threshold(spec.id, spec.threshold));
+                PolicyDecision decision = policyModel.recommend(catalog, spec, score, source, calibrationStore.threshold(spec.id, spec.threshold));
+                return hardenDecision(spec, score, decision);
             } catch (Throwable ignored) {
             }
+        }
+        PolicyDecision hardened = hardenDecision(spec, score, null);
+        if (hardened != null) {
+            return hardened;
         }
         float probability = Math.max(score.risk, score.confidence);
         if (probability >= 0.80f) {
@@ -124,6 +129,32 @@ public final class ThreatEngine {
             return new PolicyDecision("temporary_block", 1.0f);
         }
         return new PolicyDecision("warn", 1.0f);
+    }
+
+    private PolicyDecision hardenDecision(ModelSpec spec, ThreatScore score, PolicyDecision decision) {
+        float probability = Math.max(score.risk, score.confidence);
+        String current = decision == null ? "" : decision.action;
+        if ("android_malware".equals(spec.id) && probability >= 0.70f) {
+            return new PolicyDecision("uninstall_prompt", 1.0f);
+        }
+        if (("social_url".equals(spec.id) || "phishing_html".equals(spec.id) || "stealth_phisher_2025".equals(spec.id))
+                && probability >= 0.60f) {
+            return new PolicyDecision("block_domain", 1.0f);
+        }
+        if ("social_text".equals(spec.id) && probability >= 0.70f) {
+            return new PolicyDecision("quarantine", 1.0f);
+        }
+        if ("dns_stateful".equals(spec.id) && probability >= 0.70f) {
+            return new PolicyDecision("block_domain", 1.0f);
+        }
+        if (("network_attack".equals(spec.id) || "iot_attack".equals(spec.id) || "doh_l2".equals(spec.id)
+                || "post_quantum".equals(spec.id)) && probability >= 0.75f) {
+            return new PolicyDecision("block_flow", 1.0f);
+        }
+        if (decision != null && current != null && !current.trim().isEmpty()) {
+            return decision;
+        }
+        return null;
     }
 
     private void raise(String modelId, String title, String source, String target, String severity, double probability, String recommendedAction) {

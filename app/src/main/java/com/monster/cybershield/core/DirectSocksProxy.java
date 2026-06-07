@@ -1,6 +1,10 @@
 package com.monster.cybershield.core;
 
+import android.content.Intent;
 import android.net.VpnService;
+import android.os.Build;
+
+import com.monster.cybershield.CyberDefenseService;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class DirectSocksProxy implements AutoCloseable {
     private final VpnService vpnService;
     private final BlocklistStore blocklist;
+    private final ProtectionPolicyStore protectionPolicy;
     private final int port;
     private final ExecutorService workers = Executors.newCachedThreadPool();
     private volatile boolean running;
@@ -30,6 +35,7 @@ public final class DirectSocksProxy implements AutoCloseable {
     public DirectSocksProxy(VpnService vpnService, int port) {
         this.vpnService = vpnService;
         this.blocklist = new BlocklistStore(vpnService);
+        this.protectionPolicy = new ProtectionPolicyStore(vpnService);
         this.port = port;
     }
 
@@ -78,6 +84,11 @@ public final class DirectSocksProxy implements AutoCloseable {
             }
             Request request = readRequest(input);
             if (request == null || isBlocked(request.host, request.port)) {
+                writeFailure(output, 0x02);
+                return;
+            }
+            if (shouldBlockCleartextHttp(request.host, request.port)) {
+                raiseCleartextHttpAlert(request.host, request.port);
                 writeFailure(output, 0x02);
                 return;
             }
@@ -191,6 +202,10 @@ public final class DirectSocksProxy implements AutoCloseable {
                 if (request == null || isBlocked(request.host, request.port)) {
                     continue;
                 }
+                String dnsQuery = request.port == 53 ? parseDnsQueryDomain(request.payload) : "";
+                if (!dnsQuery.isEmpty() && isBlocked(dnsQuery, 53)) {
+                    continue;
+                }
                 DatagramPacket out = new DatagramPacket(request.payload, request.payload.length, InetAddress.getByName(request.host), request.port);
                 remoteSocket.send(out);
             } catch (IOException ignored) {
@@ -266,6 +281,78 @@ public final class DirectSocksProxy implements AutoCloseable {
         String normalized = host == null ? "" : host.toLowerCase(Locale.US);
         return blocklist.isBlocked(normalized)
                 || blocklist.isBlocked(normalized + ":" + targetPort);
+    }
+
+    private boolean shouldBlockCleartextHttp(String host, int targetPort) {
+        if (targetPort != 80 || !protectionPolicy.shouldBlockCleartextHttp()) {
+            return false;
+        }
+        String normalized = host == null ? "" : host.toLowerCase(Locale.US);
+        return !blocklist.isAllowed(normalized) && !blocklist.isAllowed(normalized + ":" + targetPort);
+    }
+
+    private void raiseCleartextHttpAlert(String host, int targetPort) {
+        if (!protectionPolicy.shouldRaiseHttpDowngradeAlert()) {
+            return;
+        }
+        Intent intent = new Intent(vpnService, CyberDefenseService.class);
+        intent.setAction(CyberDefenseService.ACTION_RAISE_THREAT);
+        intent.putExtra(CyberDefenseService.EXTRA_MODEL_ID, "wifi_threat");
+        intent.putExtra(CyberDefenseService.EXTRA_TITLE, "HTTP downgrade engellendi");
+        intent.putExtra(CyberDefenseService.EXTRA_SOURCE, "vpn_http_guard");
+        intent.putExtra(CyberDefenseService.EXTRA_TARGET, host + ":" + targetPort);
+        intent.putExtra(CyberDefenseService.EXTRA_SEVERITY, "high");
+        intent.putExtra(CyberDefenseService.EXTRA_PROBABILITY, 0.78);
+        intent.putExtra(CyberDefenseService.EXTRA_RECOMMENDED_ACTION, "block_flow");
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                vpnService.startForegroundService(intent);
+            } else {
+                vpnService.startService(intent);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static String parseDnsQueryDomain(byte[] payload) {
+        if (payload == null || payload.length < 13) {
+            return "";
+        }
+        try {
+            int flags = ((payload[2] & 0xFF) << 8) | (payload[3] & 0xFF);
+            int qdCount = ((payload[4] & 0xFF) << 8) | (payload[5] & 0xFF);
+            boolean isResponse = (flags & 0x8000) != 0;
+            if (isResponse || qdCount <= 0) {
+                return "";
+            }
+            StringBuilder name = new StringBuilder();
+            int pos = 12;
+            int labels = 0;
+            while (pos < payload.length && labels < 32) {
+                int len = payload[pos++] & 0xFF;
+                if (len == 0) {
+                    break;
+                }
+                if ((len & 0xC0) != 0 || len > 63 || pos + len > payload.length) {
+                    return "";
+                }
+                if (name.length() > 0) {
+                    name.append('.');
+                }
+                for (int i = 0; i < len; i++) {
+                    int ch = payload[pos + i] & 0xFF;
+                    if (ch <= 32 || ch >= 127) {
+                        return "";
+                    }
+                    name.append((char) ch);
+                }
+                pos += len;
+                labels++;
+            }
+            return name.toString().toLowerCase(Locale.US);
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     private byte[] successReply(String host, int bindPort) throws IOException {
