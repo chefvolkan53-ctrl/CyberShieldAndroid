@@ -1,0 +1,9 @@
+# CyberShield critical security ownership
+/.github/workflows/ @chefvolkan53-ctrl
+/security-updates/model_update_manifest.json @chefvolkan53-ctrl
+/tools/SignSecurityUpdatePackage.java @chefvolkan53-ctrl
+/tools/build_threat_intel_feed.py @chefvolkan53-ctrl
+/tools/build_update_manifest.py @chefvolkan53-ctrl
+/app/src/main/java/com/monster/cybershield/core/SecurityUpdate* @chefvolkan53-ctrl
+/app/src/main/java/com/monster/cybershield/core/ThreatIntelStore.java @chefvolkan53-ctrl
+/app/src/main/java/com/monster/cybershield/core/AlertNoisePolicy.java @chefvolkan53-ctrl

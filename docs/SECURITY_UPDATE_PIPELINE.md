@@ -34,14 +34,24 @@ GitHub Actions runs `.github/workflows/security-threat-feed.yml` once per day an
 The workflow:
 
 1. Fetches external threat sources.
-2. Builds `security-updates/threat_intel.json`.
-3. Signs the feed with the private update key stored in GitHub Secrets.
-4. Rebuilds `security-updates/model_update_manifest.json`.
-5. Commits the signed feed and manifest back to the repository.
+2. Builds an unsigned `security-updates/threat_intel.json` artifact in a read-only job.
+3. Enters the `security-update-signing` environment.
+4. Signs the feed with the private update key stored in a protected GitHub secret.
+5. Rebuilds `security-updates/model_update_manifest.json`.
+6. Commits the signed feed and manifest back to the repository.
 
-Required GitHub secret:
+Required GitHub secret or protected environment secret:
 
 - `CYBERSHIELD_UPDATE_PRIVATE_KEY`: contents of `C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem`
+
+Recommended location:
+
+- `Settings -> Environments -> security-update-signing -> Environment secrets`
+
+Recommended environment protection:
+
+- required reviewer: `chefvolkan53-ctrl`
+- deployment branches: `main` only
 
 Optional GitHub secrets:
 
@@ -109,3 +119,7 @@ Local private key path:
 `C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem`
 
 Keep this file offline or in a secure secret store. If it leaks, rotate the public key in the app and publish a new release.
+
+GitHub hardening checklist:
+
+`docs/GITHUB_HARDENING.md`
