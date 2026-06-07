@@ -27,6 +27,29 @@ The app checks:
 
 The initial manifest intentionally contains no packages. Publish signed packages through GitHub Releases or another HTTPS endpoint, then add their URL, SHA-256 and signature to the manifest.
 
+## Automatic Feed Updates
+
+GitHub Actions runs `.github/workflows/security-threat-feed.yml` once per day and can also be started manually from the GitHub Actions tab.
+
+The workflow:
+
+1. Fetches external threat sources.
+2. Builds `security-updates/threat_intel.json`.
+3. Signs the feed with the private update key stored in GitHub Secrets.
+4. Rebuilds `security-updates/model_update_manifest.json`.
+5. Commits the signed feed and manifest back to the repository.
+
+Required GitHub secret:
+
+- `CYBERSHIELD_UPDATE_PRIVATE_KEY`: contents of `C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem`
+
+Optional GitHub secrets:
+
+- `URLHAUS_AUTH_KEY`: enables authenticated URLhaus recent CSV export.
+- `PHISHTANK_APP_KEY`: enables PhishTank online-valid feed.
+
+Without optional secrets, the workflow still uses sources that are reachable without credentials and records skipped sources in `source_status`.
+
 ## Threat Feed Schema
 
 ```json
@@ -34,6 +57,7 @@ The initial manifest intentionally contains no packages. Publish signed packages
   "version": "2026.06.08",
   "malicious_domains": ["example-bad.test"],
   "malicious_ips": ["203.0.113.66"],
+  "malicious_cidrs": ["203.0.113.0/24"],
   "phishing_patterns": ["login-verify", "wallet-confirm"],
   "doh_endpoints": ["dns.example.test"],
   "risky_ports": [22, 23, 445, 1433, 5900]

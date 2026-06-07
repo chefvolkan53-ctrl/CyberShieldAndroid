@@ -1,0 +1,63 @@
+name: CyberShield Security Threat Feed
+
+on:
+  schedule:
+    - cron: "17 02 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build threat intelligence feed
+        env:
+          URLHAUS_AUTH_KEY: ${{ secrets.URLHAUS_AUTH_KEY }}
+          PHISHTANK_APP_KEY: ${{ secrets.PHISHTANK_APP_KEY }}
+        run: |
+          python tools/build_threat_intel_feed.py --output security-updates/threat_intel.json
+
+      - name: Sign feed and build manifest
+        env:
+          CYBERSHIELD_UPDATE_PRIVATE_KEY: ${{ secrets.CYBERSHIELD_UPDATE_PRIVATE_KEY }}
+        run: |
+          test -n "$CYBERSHIELD_UPDATE_PRIVATE_KEY"
+          printf '%s\n' "$CYBERSHIELD_UPDATE_PRIVATE_KEY" > /tmp/cybershield_update_private_key.pem
+          java tools/SignSecurityUpdatePackage.java security-updates/threat_intel.json /tmp/cybershield_update_private_key.pem > security-updates/threat_intel_signature.json
+          python tools/build_update_manifest.py \
+            --feed security-updates/threat_intel.json \
+            --signature security-updates/threat_intel_signature.json \
+            --repo "$GITHUB_REPOSITORY" \
+            --branch "${GITHUB_REF_NAME:-main}" \
+            --output security-updates/model_update_manifest.json
+          rm -f /tmp/cybershield_update_private_key.pem
+
+      - name: Commit feed update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add security-updates/threat_intel.json security-updates/threat_intel_signature.json security-updates/model_update_manifest.json
+          if git diff --cached --quiet; then
+            echo "No threat intelligence changes."
+          else
+            git commit -m "Update CyberShield threat intelligence feed"
+            git push
+          fi
