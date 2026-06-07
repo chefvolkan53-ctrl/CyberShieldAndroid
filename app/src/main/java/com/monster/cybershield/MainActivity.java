@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -22,13 +24,21 @@ import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.PolicyAssistantText;
 import com.monster.cybershield.core.ProtectionPolicyStore;
 import com.monster.cybershield.model.ModelCatalog;
-import com.monster.cybershield.model.ModelSpec;
 
 import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final int REQ_VPN = 501;
+    private static final int BG = Color.rgb(11, 18, 24);
+    private static final int SURFACE = Color.rgb(22, 31, 39);
+    private static final int SURFACE_SOFT = Color.rgb(29, 41, 51);
+    private static final int TEXT = Color.rgb(239, 246, 252);
+    private static final int MUTED = Color.rgb(158, 174, 187);
+    private static final int DANGER = Color.rgb(220, 53, 69);
+    private static final int WARNING = Color.rgb(245, 158, 11);
+    private static final int OK = Color.rgb(32, 201, 151);
+    private static final int ACCENT = Color.rgb(56, 189, 248);
     private ModelCatalog catalog;
     private ThreatStore threatStore;
     private LinearLayout root;
@@ -57,120 +67,92 @@ public class MainActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(18), dp(18), dp(18));
-        root.setBackgroundColor(Color.rgb(16, 20, 24));
+        root.setPadding(dp(18), dp(18), dp(18), dp(24));
+        root.setBackgroundColor(BG);
         scroll.addView(root);
 
-        root.addView(text("CyberShield", 28, Color.WHITE, true));
-        root.addView(text("Otomatik siber savunma aktif. Olay bazli model yukleme, VPN politikasi, SMS/link/APK kaynaklari ve kullanici onayli mudahale devrede.", 14, Color.rgb(169, 182, 194), false));
+        root.addView(text("CyberShield", 13, ACCENT, true));
+        root.addView(text("Savunma merkezi", 30, TEXT, true));
+        root.addView(text("Telefon, ag, DNS, link, SMS ve APK kaynaklari otomatik izleniyor. Kritik olaylarda bildirim dogrudan mudahale ekranina gider.", 14, MUTED, false));
         addSpace(10);
 
         int openThreats = 0;
+        ThreatEvent latest = null;
+        ThreatEvent firstOpen = null;
         for (ThreatEvent event : threatStore.list()) {
             if ("new".equals(event.status)) {
                 openThreats++;
+                if (firstOpen == null) {
+                    firstOpen = event;
+                }
+            }
+            if (latest == null) {
+                latest = event;
             }
         }
         ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
-        root.addView(card("Risk paneli", "Acik olay: " + openThreats + " | Algilama modeli: " + catalog.all().size() + " | Policy modeli: aktif | Pil profili: dengeli"));
-        root.addView(card("DNS korumasi", policy.dnsLeakProtectionSummary() + " | Strict VPN: " + (policy.isStrictVpnRequired() ? "ACIK" : "KAPALI")));
         SharedPreferences vpnStatus = getSharedPreferences("vpn_status", MODE_PRIVATE);
-        root.addView(card("VPN analiz motoru",
-                "Mod: " + vpnStatus.getString("mode", "not_started")
-                        + " | Proxy: " + vpnStatus.getLong("proxy_connections", 0L)
-                        + " | Mirror KB: " + (vpnStatus.getLong("proxy_mirrored_bytes", 0L) / 1024L)
-                        + " | Flow: " + vpnStatus.getLong("proxy_analyzed_flows", 0L)));
 
-        Button start = button("Korumayi baslat", new View.OnClickListener() {
+        root.addView(statusPanel(openThreats, policy, vpnStatus));
+        if (firstOpen != null) {
+            root.addView(threatPanel(firstOpen, true));
+        } else if (latest != null) {
+            root.addView(threatPanel(latest, true));
+        }
+
+        addSection("Hizli kontroller");
+        root.addView(actionButton("Korumayi aktif tut", OK, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startService(new Intent(MainActivity.this, CyberDefenseService.class).setAction(CyberDefenseService.ACTION_START));
             }
-        });
-        root.addView(start);
-
-        Button stop = button("Korumayi duraklat", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startService(new Intent(MainActivity.this, CyberDefenseService.class).setAction(CyberDefenseService.ACTION_STOP));
-                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
-            }
-        });
-        root.addView(stop);
-
-        root.addView(button("Siki VPN/DNS korumasini ac", new View.OnClickListener() {
+        }));
+        root.addView(actionButton("Siki VPN/DNS korumasini ac", ACCENT, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 enableStrictDnsVpnProtection();
             }
         }));
-
-        root.addView(button("Siki korumayi kapat / uyumlu moda don", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                disableStrictDnsVpnProtection();
-            }
-        }));
-
-        root.addView(button("Uyumlu internet modu", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new ProtectionPolicyStore(MainActivity.this).setFullVpnForwardingEnabled(false);
-                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
-                render();
-            }
-        }));
-
-        root.addView(button("Tam VPN / DNS leak kilidi", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new ProtectionPolicyStore(MainActivity.this).setFullVpnForwardingEnabled(true);
-                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
-                render();
-            }
-        }));
-
-        root.addView(button("Izin ve VPN kurulumu", new View.OnClickListener() {
+        root.addView(secondaryButton("Izinler ve VPN kurulumu", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, OnboardingActivity.class));
             }
         }));
-
-        root.addView(button("Son engellemeyi geri al", new View.OnClickListener() {
+        root.addView(secondaryButton("Son engellemeyi geri al", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new BlocklistStore(MainActivity.this).undoLast();
+                String undone = new BlocklistStore(MainActivity.this).undoLast();
+                Toast.makeText(MainActivity.this, undone.isEmpty() ? "Geri alinacak karar yok" : "Geri alindi: " + undone, Toast.LENGTH_SHORT).show();
                 render();
             }
         }));
+        root.addView(secondaryButton("Uyumlu internet modu", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                disableStrictDnsVpnProtection();
+            }
+        }));
+        root.addView(secondaryButton("Korumayi duraklat", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startService(new Intent(MainActivity.this, CyberDefenseService.class).setAction(CyberDefenseService.ACTION_STOP));
+                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
+                Toast.makeText(MainActivity.this, "Koruma duraklatildi", Toast.LENGTH_SHORT).show();
+            }
+        }));
 
-        addSection("Koruma modulleri");
-        for (ModelSpec spec : catalog.all()) {
-            root.addView(card(
-                    spec.title,
-                    "Girdi " + spec.inputSize + " | Esik " + String.format(Locale.US, "%.3f", spec.threshold)
-                            + " | Dogruluk " + String.format(Locale.US, "%.1f%%", spec.accuracy * 100.0)
-            ));
-        }
-
-        addSection("Son olaylar");
+        addSection("Son tehditler");
         List<ThreatEvent> events = threatStore.list();
         if (events.isEmpty()) {
-            root.addView(card("Henuz aktif olay yok", "Bir saldiri yakalandiginda bildirim dogrudan mudahale ekranina gider."));
+            root.addView(card("Aktif olay yok", "Bildirim geldiginde dokununca ilgili mudahale ekranina acilir."));
         } else {
             int count = 0;
             for (ThreatEvent event : events) {
-                if (count++ >= 8) {
+                if (count++ >= 5) {
                     break;
                 }
-                View card = card(event.title, event.target + " | " + event.status + " | " + PolicyAssistantText.notificationSummary(event));
-                card.setOnClickListener(v -> {
-                    Intent open = new Intent(MainActivity.this, InterventionActivity.class);
-                    open.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);
-                    startActivity(open);
-                });
-                root.addView(card);
+                root.addView(threatPanel(event, false));
             }
         }
 
@@ -179,14 +161,46 @@ public class MainActivity extends Activity {
         if (blocklist.all().isEmpty() && blocklist.allowList().isEmpty()) {
             root.addView(card("Politika listesi bos", "Engelleme veya guvenli sayma karari burada gorunur."));
         } else {
+            int shown = 0;
             for (String value : blocklist.all()) {
-                root.addView(card("Engelli", value));
+                if (shown++ >= 6) break;
+                root.addView(card("Engelli hedef", value));
             }
             for (String value : blocklist.allowList()) {
+                if (shown++ >= 8) break;
                 root.addView(card("Guvenli sayildi", value));
             }
         }
         setContentView(scroll);
+    }
+
+    private View statusPanel(int openThreats, ProtectionPolicyStore policy, SharedPreferences vpnStatus) {
+        LinearLayout panel = panel();
+        panel.addView(text(openThreats == 0 ? "Koruma stabil" : "Mudahale bekleyen olay var", 21, openThreats == 0 ? OK : WARNING, true));
+        panel.addView(text("Acik olay: " + openThreats + " | Model seti: " + catalog.all().size() + " | Pil modu: dengeli", 14, TEXT, false));
+        panel.addView(text("DNS/VPN: " + policy.dnsLeakProtectionSummary(), 13, MUTED, false));
+        panel.addView(text("Motor: " + vpnStatus.getString("mode", "not_started")
+                + " | Proxy " + vpnStatus.getLong("proxy_connections", 0L)
+                + " | Flow " + vpnStatus.getLong("proxy_analyzed_flows", 0L), 13, MUTED, false));
+        return panel;
+    }
+
+    private View threatPanel(ThreatEvent event, boolean prominent) {
+        LinearLayout panel = panel();
+        int riskColor = event.probability >= 0.85 ? DANGER : event.probability >= 0.65 ? WARNING : ACCENT;
+        panel.addView(text((prominent ? "Acil olay: " : "") + event.title, prominent ? 19 : 16, TEXT, true));
+        panel.addView(text(String.format(Locale.US, "%.1f%% risk", event.probability * 100.0) + " | " + readableStatus(event.status), 14, riskColor, true));
+        panel.addView(text(event.target, 13, MUTED, false));
+        panel.addView(text(PolicyAssistantText.notificationSummary(event), 13, Color.rgb(219, 234, 246), false));
+        panel.addView(actionButton("Mudahale et", riskColor, v -> openEvent(event)));
+        panel.setOnClickListener(v -> openEvent(event));
+        return panel;
+    }
+
+    private void openEvent(ThreatEvent event) {
+        Intent open = new Intent(MainActivity.this, InterventionActivity.class);
+        open.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);
+        startActivity(open);
     }
 
     private void requestNotificationPermission() {
@@ -273,8 +287,8 @@ public class MainActivity extends Activity {
     }
 
     private TextView card(String title, String subtitle) {
-        TextView view = text(title + "\n" + subtitle, 15, Color.rgb(245, 247, 250), false);
-        view.setBackgroundColor(Color.rgb(23, 32, 40));
+        TextView view = text(title + "\n" + subtitle, 15, TEXT, false);
+        view.setBackground(rounded(SURFACE));
         view.setPadding(dp(14), dp(12), dp(14), dp(12));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, dp(6), 0, dp(6));
@@ -289,17 +303,56 @@ public class MainActivity extends Activity {
         text.setTextSize(sp);
         text.setPadding(0, dp(5), 0, dp(5));
         if (bold) {
-            text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            text.setTypeface(Typeface.DEFAULT_BOLD);
         }
         return text;
     }
 
-    private Button button(String label, View.OnClickListener listener) {
+    private Button actionButton(String label, int color, View.OnClickListener listener) {
         Button button = new Button(this);
         button.setText(label);
         button.setAllCaps(false);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
         button.setOnClickListener(listener);
+        button.setBackground(rounded(color));
+        button.setPadding(0, dp(10), 0, dp(10));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(6), 0, dp(6));
+        button.setLayoutParams(params);
         return button;
+    }
+
+    private Button secondaryButton(String label, View.OnClickListener listener) {
+        return actionButton(label, SURFACE_SOFT, listener);
+    }
+
+    private LinearLayout panel() {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(14), dp(12), dp(14), dp(12));
+        layout.setBackground(rounded(SURFACE));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(6), 0, dp(6));
+        layout.setLayoutParams(params);
+        return layout;
+    }
+
+    private GradientDrawable rounded(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(8));
+        return drawable;
+    }
+
+    private String readableStatus(String status) {
+        if ("blocked".equals(status)) return "engellendi";
+        if ("quarantined".equals(status)) return "karantinada";
+        if ("temporary_blocked".equals(status)) return "gecici engelli";
+        if ("allowed".equals(status)) return "guvenli";
+        if ("remove_requested".equals(status)) return "kaldirma istendi";
+        return "mudahale bekliyor";
     }
 
     private void addSpace(int heightDp) {

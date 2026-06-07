@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.VpnService;
 import android.os.Bundle;
 import android.view.Gravity;
@@ -35,6 +37,15 @@ public class InterventionActivity extends Activity {
 
     private ThreatEvent event;
     private ThreatStore store;
+    private static final int BG = Color.rgb(11, 18, 24);
+    private static final int SURFACE = Color.rgb(22, 31, 39);
+    private static final int SURFACE_SOFT = Color.rgb(29, 41, 51);
+    private static final int TEXT = Color.rgb(239, 246, 252);
+    private static final int MUTED = Color.rgb(158, 174, 187);
+    private static final int DANGER = Color.rgb(220, 53, 69);
+    private static final int WARNING = Color.rgb(245, 158, 11);
+    private static final int OK = Color.rgb(32, 201, 151);
+    private static final int ACCENT = Color.rgb(56, 189, 248);
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -64,68 +75,110 @@ public class InterventionActivity extends Activity {
         ScrollView scroll = new ScrollView(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(20), dp(20), dp(20));
-        root.setBackgroundColor(Color.rgb(16, 20, 24));
+        root.setPadding(dp(18), dp(18), dp(18), dp(24));
+        root.setBackgroundColor(BG);
         scroll.addView(root);
 
-        TextView title = text(event.title, 24, Color.WHITE, true);
-        root.addView(title);
-        root.addView(text("Kaynak: " + event.source, 14, Color.rgb(169, 182, 194), false));
-        root.addView(text("Hedef: " + event.target, 14, Color.rgb(169, 182, 194), false));
-        root.addView(text("Model: " + event.modelId, 14, Color.rgb(169, 182, 194), false));
-        root.addView(text("Risk: " + String.format(Locale.US, "%.1f%%", event.probability * 100.0), 18, Color.rgb(245, 165, 36), true));
-        root.addView(text("CyberShield Asistani", 18, Color.rgb(125, 211, 252), true));
-        root.addView(text(PolicyAssistantText.assistantDetail(event), 15, Color.rgb(224, 242, 254), false));
-        root.addView(text("Zaman: " + DateFormat.getDateTimeInstance().format(new Date(event.createdAt)), 14, Color.rgb(169, 182, 194), false));
-        root.addView(text("Durum: " + event.status, 14, Color.rgb(32, 201, 151), true));
+        root.addView(text("CyberShield", 13, ACCENT, true));
+        root.addView(text("Mudahale merkezi", 28, TEXT, true));
+        root.addView(text("Bu olay icin uygulanabilir kararlar asagida. Tehlikeli veya yikici islemler Android onayi olmadan otomatik yapilmaz.", 14, MUTED, false));
+        addSpace(root, 14);
 
-        addSpace(root, 18);
-        root.addView(button("Engelle", new View.OnClickListener() {
+        LinearLayout risk = panel();
+        risk.addView(text(event.title, 22, TEXT, true));
+        risk.addView(text(riskLabel() + " | " + String.format(Locale.US, "%.1f%%", event.probability * 100.0), 18, riskColor(), true));
+        risk.addView(text("Hedef", 12, MUTED, true));
+        risk.addView(text(event.target, 15, TEXT, false));
+        risk.addView(text("Kaynak: " + event.source + " | Model: " + event.modelId, 13, MUTED, false));
+        risk.addView(text("Durum: " + readableStatus(event.status) + " | " + DateFormat.getDateTimeInstance().format(new Date(event.createdAt)), 13, MUTED, false));
+        root.addView(risk);
+
+        addSpace(root, 10);
+        LinearLayout actions = panel();
+        actions.addView(text("Mudahale secenekleri", 17, TEXT, true));
+        actions.addView(actionButton(PolicyAssistantText.actionLabel(event.recommendedAction), colorForAction(event.recommendedAction), new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                runRecommendedAction();
+            }
+        }));
+        actions.addView(actionButton("Engelle", DANGER, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 confirmBlock();
             }
         }));
-        root.addView(button("1 saat gecici engelle", new View.OnClickListener() {
+        actions.addView(actionButton("1 saat gecici engelle", WARNING, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 confirmTemporaryBlock();
             }
         }));
-        root.addView(button("Karantinaya al", new View.OnClickListener() {
+        actions.addView(actionButton("Karantinaya al", Color.rgb(147, 51, 234), new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 confirmQuarantine();
             }
         }));
-        root.addView(button("Kaldir", new View.OnClickListener() {
+        actions.addView(actionButton("Kaldirma ekranini ac", Color.rgb(239, 68, 68), new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 confirmRemove();
             }
         }));
-        root.addView(button("Uygulama ayarlarina git", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(InterventionActions.appSettingsIntent(event));
-            }
-        }));
-        root.addView(button("Guvenli say", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                InterventionActions.allow(InterventionActivity.this, event);
-                Toast.makeText(InterventionActivity.this, "Olay guvenli olarak isaretlendi", Toast.LENGTH_SHORT).show();
-                finish();
-            }
-        }));
-        root.addView(button("VPN engelleme iznini ac", new View.OnClickListener() {
+        actions.addView(actionButton("VPN korumasini zorunlu kil", ACCENT, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 requestVpnPermission();
             }
         }));
+        actions.addView(actionButton("Guvenli say", OK, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                InterventionActions.allow(InterventionActivity.this, event);
+                Toast.makeText(InterventionActivity.this, "Olay guvenli olarak isaretlendi", Toast.LENGTH_SHORT).show();
+                event = store.find(event.id);
+                render();
+            }
+        }));
+        root.addView(actions);
+
+        addSpace(root, 10);
+        LinearLayout primary = panel();
+        primary.addView(text("Onerilen mudahale gerekcesi", 17, TEXT, true));
+        primary.addView(text(PolicyAssistantText.assistantDetail(event), 14, Color.rgb(219, 234, 246), false));
+        root.addView(primary);
+
+        addSpace(root, 10);
+        LinearLayout tools = panel();
+        tools.addView(text("Ek araclar", 17, TEXT, true));
+        tools.addView(secondaryButton("Uygulama ayarlarina git", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(InterventionActions.appSettingsIntent(event));
+            }
+        }));
+        tools.addView(secondaryButton("Kapat", v -> finish()));
+        root.addView(tools);
 
         setContentView(scroll);
+    }
+
+    private void runRecommendedAction() {
+        String action = event.recommendedAction == null ? "" : event.recommendedAction;
+        if (ACTION_QUARANTINE.equals(action) || "quarantine".equals(action)) {
+            confirmQuarantine();
+        } else if (ACTION_TEMPORARY_BLOCK.equals(action) || "temporary_block".equals(action)) {
+            confirmTemporaryBlock();
+        } else if (ACTION_REMOVE.equals(action) || "uninstall_prompt".equals(action)) {
+            confirmRemove();
+        } else if (ACTION_REQUIRE_VPN.equals(action) || "require_vpn".equals(action)) {
+            requestVpnPermission();
+        } else if ("warn".equals(action) || "explain_only".equals(action) || "allow".equals(action) || "mark_wifi_suspicious".equals(action)) {
+            Toast.makeText(this, "Olay izlendi, otomatik engel uygulanmadi", Toast.LENGTH_SHORT).show();
+        } else {
+            confirmBlock();
+        }
     }
 
     private void confirmBlock() {
@@ -221,18 +274,89 @@ public class InterventionActivity extends Activity {
         text.setGravity(Gravity.START);
         text.setPadding(0, dp(6), 0, dp(6));
         if (bold) {
-            text.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            text.setTypeface(Typeface.DEFAULT_BOLD);
         }
         return text;
     }
 
-    private Button button(String label, View.OnClickListener listener) {
+    private Button actionButton(String label, int color, View.OnClickListener listener) {
         Button button = new Button(this);
         button.setText(label);
         button.setAllCaps(false);
+        button.setTextColor(Color.WHITE);
+        button.setTextSize(15);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
         button.setOnClickListener(listener);
-        button.setPadding(0, dp(8), 0, dp(8));
+        button.setPadding(0, dp(10), 0, dp(10));
+        button.setBackground(rounded(color));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(6), 0, dp(6));
+        button.setLayoutParams(params);
         return button;
+    }
+
+    private Button secondaryButton(String label, View.OnClickListener listener) {
+        return actionButton(label, SURFACE_SOFT, listener);
+    }
+
+    private LinearLayout panel() {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(dp(14), dp(12), dp(14), dp(12));
+        layout.setBackground(rounded(SURFACE));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(5), 0, dp(5));
+        layout.setLayoutParams(params);
+        return layout;
+    }
+
+    private GradientDrawable rounded(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(8));
+        return drawable;
+    }
+
+    private int riskColor() {
+        if (event.probability >= 0.85) {
+            return DANGER;
+        }
+        if (event.probability >= 0.65) {
+            return WARNING;
+        }
+        return OK;
+    }
+
+    private String riskLabel() {
+        if (event.probability >= 0.85) {
+            return "Kritik risk";
+        }
+        if (event.probability >= 0.65) {
+            return "Yuksek risk";
+        }
+        return "Izleme sinyali";
+    }
+
+    private int colorForAction(String action) {
+        if ("quarantine".equals(action)) {
+            return Color.rgb(147, 51, 234);
+        }
+        if ("temporary_block".equals(action)) {
+            return WARNING;
+        }
+        if ("warn".equals(action) || "explain_only".equals(action) || "allow".equals(action)) {
+            return SURFACE_SOFT;
+        }
+        return DANGER;
+    }
+
+    private String readableStatus(String status) {
+        if (InterventionActions.STATUS_BLOCKED.equals(status)) return "engellendi";
+        if (InterventionActions.STATUS_QUARANTINED.equals(status)) return "karantinada";
+        if (InterventionActions.STATUS_TEMP_BLOCKED.equals(status)) return "gecici engelli";
+        if (InterventionActions.STATUS_ALLOWED.equals(status)) return "guvenli sayildi";
+        if (InterventionActions.STATUS_REMOVE_REQUESTED.equals(status)) return "kaldirma istendi";
+        return "mudahale bekliyor";
     }
 
     private void addSpace(LinearLayout root, int dp) {

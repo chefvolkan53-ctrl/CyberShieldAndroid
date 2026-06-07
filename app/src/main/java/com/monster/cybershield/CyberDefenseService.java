@@ -27,6 +27,8 @@ import com.monster.cybershield.model.ModelCatalog;
 import java.util.Locale;
 
 public class CyberDefenseService extends Service {
+    private static final String GROUP_THREATS = "cybershield_threats";
+    private static final int NOTIFICATION_THREAT_SUMMARY = 11;
     public static final String ACTION_START = "com.monster.cybershield.START";
     public static final String ACTION_STOP = "com.monster.cybershield.STOP";
     public static final String ACTION_RAISE_THREAT = "com.monster.cybershield.RAISE_THREAT";
@@ -186,9 +188,7 @@ public class CyberDefenseService extends Service {
         if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        Intent open = new Intent(this, InterventionActivity.class);
-        open.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);
-        PendingIntent openIntent = PendingIntent.getActivity(this, event.id.hashCode(), open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent openIntent = openInterventionIntent(event, 0);
 
         Intent block = new Intent(this, InterventionActivity.class);
         block.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);
@@ -211,6 +211,7 @@ public class CyberDefenseService extends Service {
                 .setContentText(PolicyAssistantText.notificationSummary(event))
                 .setStyle(new Notification.BigTextStyle().bigText(PolicyAssistantText.assistantBrief(event)))
                 .setContentIntent(openIntent)
+                .setGroup(GROUP_THREATS)
                 .setAutoCancel(true)
                 .addAction(android.R.drawable.ic_menu_send, PolicyAssistantText.actionLabel(event.recommendedAction), primaryIntent)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Engelle", blockIntent)
@@ -219,11 +220,32 @@ public class CyberDefenseService extends Service {
 
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         manager.notify(AlertNoisePolicy.notificationIdFor(event.target), notification);
+        manager.notify(NOTIFICATION_THREAT_SUMMARY, threatSummaryNotification(event, openIntent));
+    }
+
+    private PendingIntent openInterventionIntent(ThreatEvent event, int offset) {
+        Intent open = new Intent(this, InterventionActivity.class);
+        open.putExtra(InterventionActivity.EXTRA_EVENT_ID, event.id);
+        open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(this, event.id.hashCode() + offset, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    private Notification threatSummaryNotification(ThreatEvent event, PendingIntent openIntent) {
+        return new Notification.Builder(this, CHANNEL_ALERTS)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("CyberShield mudahale bekliyor")
+                .setContentText(event.title + " | " + AlertNoisePolicy.normalizedTarget(event.target))
+                .setStyle(new Notification.BigTextStyle().bigText("Son olay: " + PolicyAssistantText.assistantBrief(event)))
+                .setContentIntent(openIntent)
+                .setGroup(GROUP_THREATS)
+                .setGroupSummary(true)
+                .setAutoCancel(true)
+                .build();
     }
 
     private void clearOldAlertNotificationsOnce() {
         android.content.SharedPreferences prefs = getSharedPreferences("alert_noise_policy", MODE_PRIVATE);
-        int policyVersion = 9;
+        int policyVersion = 10;
         if (prefs.getInt("cleared_for_policy_version", 0) >= policyVersion) {
             return;
         }
