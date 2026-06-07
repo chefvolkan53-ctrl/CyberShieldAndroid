@@ -1,0 +1,47 @@
+{
+  "samples": 134976,
+  "positive_samples": 20525,
+  "negative_samples": 114451,
+  "threshold": 0.9999997615814209,
+  "accuracy": 0.9848125648244185,
+  "attack_precision": 1.0,
+  "attack_recall": 0.9001218026796589,
+  "classification_report": {
+    "0": {
+      "precision": 0.9824041886614309,
+      "recall": 1.0,
+      "f1-score": 0.9911240041565639,
+      "support": 22891.0
+    },
+    "1": {
+      "precision": 1.0,
+      "recall": 0.9001218026796589,
+      "f1-score": 0.9474358974358974,
+      "support": 4105.0
+    },
+    "accuracy": 0.9848125648244185,
+    "macro avg": {
+      "precision": 0.9912020943307154,
+      "recall": 0.9500609013398295,
+      "f1-score": 0.9692799507962306,
+      "support": 26996.0
+    },
+    "weighted avg": {
+      "precision": 0.9850798000684847,
+      "recall": 0.9848125648244185,
+      "f1-score": 0.9844808096800365,
+      "support": 26996.0
+    }
+  },
+  "history_last": {
+    "accuracy": 0.9989649653434753,
+    "loss": 0.004894254729151726,
+    "precision": 0.9941386580467224,
+    "recall": 0.999066174030304,
+    "val_accuracy": 0.9995678067207336,
+    "val_loss": 0.0010776093695312738,
+    "val_precision": 0.9972066879272461,
+    "val_recall": 1.0
+  },
+  "note": "Labels are derived from honeypot activity quantiles and benign synthetic platform traffic. Use as risk support, not as standalone blocking proof."
+}

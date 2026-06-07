@@ -26,8 +26,12 @@ public final class DirectSocksProxy implements AutoCloseable {
     private final VpnService vpnService;
     private final BlocklistStore blocklist;
     private final ProtectionPolicyStore protectionPolicy;
+    private final ProxyTrafficMirror trafficMirror;
     private final int port;
     private final ExecutorService workers = Executors.newCachedThreadPool();
+    private final java.util.concurrent.atomic.AtomicLong acceptedConnections = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong blockedRequests = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong lastActivityAt = new java.util.concurrent.atomic.AtomicLong();
     private volatile boolean running;
     private ServerSocket serverSocket;
     private Thread acceptThread;
@@ -36,6 +40,7 @@ public final class DirectSocksProxy implements AutoCloseable {
         this.vpnService = vpnService;
         this.blocklist = new BlocklistStore(vpnService);
         this.protectionPolicy = new ProtectionPolicyStore(vpnService);
+        this.trafficMirror = new ProxyTrafficMirror(vpnService);
         this.port = port;
     }
 
@@ -60,6 +65,8 @@ public final class DirectSocksProxy implements AutoCloseable {
         while (running) {
             try {
                 final Socket client = serverSocket.accept();
+                acceptedConnections.incrementAndGet();
+                lastActivityAt.set(System.currentTimeMillis());
                 workers.execute(new Runnable() {
                     @Override
                     public void run() {
@@ -84,15 +91,18 @@ public final class DirectSocksProxy implements AutoCloseable {
             }
             Request request = readRequest(input);
             if (request == null || isBlocked(request.host, request.port)) {
+                blockedRequests.incrementAndGet();
                 writeFailure(output, 0x02);
                 return;
             }
             if (protectionPolicy.shouldBlockDohEndpoint(request.host, request.port)) {
+                blockedRequests.incrementAndGet();
                 raiseDnsLeakAlert(request.host, request.port, "DoH endpoint sinirlandi");
                 writeFailure(output, 0x02);
                 return;
             }
             if (shouldBlockCleartextHttp(request.host, request.port)) {
+                blockedRequests.incrementAndGet();
                 raiseCleartextHttpAlert(request.host, request.port);
                 writeFailure(output, 0x02);
                 return;
@@ -157,33 +167,35 @@ public final class DirectSocksProxy implements AutoCloseable {
         }
         clientOutput.write(successReply("127.0.0.1", port));
         clientOutput.flush();
+        trafficMirror.recordTcpConnect(request.host, request.port);
         final Socket remoteSocket = remote;
         workers.execute(new Runnable() {
             @Override
             public void run() {
-                pipe(clientInput, remoteSocket);
+                pipe(clientInput, remoteSocket, request, true);
             }
         });
-        pipe(remoteSocket, client);
+        pipe(remoteSocket, client, request, false);
     }
 
     private void handleUdpAssociate(Socket control, OutputStream output) throws IOException {
         final DatagramSocket clientSocket = new DatagramSocket(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
         final DatagramSocket remoteSocket = new DatagramSocket();
         final AtomicReference<SocketAddress> clientAddress = new AtomicReference<>();
+        final AtomicReference<UdpRequest> lastRequest = new AtomicReference<>();
         vpnService.protect(remoteSocket);
         output.write(successReply("127.0.0.1", clientSocket.getLocalPort()));
         output.flush();
         workers.execute(new Runnable() {
             @Override
             public void run() {
-                udpClientToRemote(clientSocket, remoteSocket, clientAddress);
+                udpClientToRemote(clientSocket, remoteSocket, clientAddress, lastRequest);
             }
         });
         workers.execute(new Runnable() {
             @Override
             public void run() {
-                udpRemoteToClient(clientSocket, remoteSocket, clientAddress);
+                udpRemoteToClient(clientSocket, remoteSocket, clientAddress, lastRequest);
             }
         });
         try {
@@ -196,7 +208,7 @@ public final class DirectSocksProxy implements AutoCloseable {
         }
     }
 
-    private void udpClientToRemote(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress) {
+    private void udpClientToRemote(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress, AtomicReference<UdpRequest> lastRequest) {
         byte[] buffer = new byte[65535];
         while (running && !clientSocket.isClosed()) {
             try {
@@ -205,12 +217,17 @@ public final class DirectSocksProxy implements AutoCloseable {
                 clientAddress.set(packet.getSocketAddress());
                 UdpRequest request = parseUdpRequest(packet);
                 if (request == null || isBlocked(request.host, request.port)) {
+                    blockedRequests.incrementAndGet();
                     continue;
                 }
                 String dnsQuery = request.port == 53 ? parseDnsQueryDomain(request.payload) : "";
                 if (!dnsQuery.isEmpty() && isBlocked(dnsQuery, 53)) {
+                    blockedRequests.incrementAndGet();
                     continue;
                 }
+                lastActivityAt.set(System.currentTimeMillis());
+                lastRequest.set(request);
+                trafficMirror.recordUdp(request.host, request.port, request.payload.length, true, dnsQuery);
                 String targetHost = targetHostForRequest(request.host, request.port);
                 DatagramPacket out = new DatagramPacket(request.payload, request.payload.length, InetAddress.getByName(targetHost), request.port);
                 remoteSocket.send(out);
@@ -219,7 +236,7 @@ public final class DirectSocksProxy implements AutoCloseable {
         }
     }
 
-    private void udpRemoteToClient(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress) {
+    private void udpRemoteToClient(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress, AtomicReference<UdpRequest> lastRequest) {
         byte[] buffer = new byte[65535];
         while (running && !remoteSocket.isClosed()) {
             try {
@@ -230,6 +247,11 @@ public final class DirectSocksProxy implements AutoCloseable {
                     continue;
                 }
                 byte[] response = wrapUdpResponse(packet);
+                UdpRequest request = lastRequest.get();
+                if (request != null) {
+                    lastActivityAt.set(System.currentTimeMillis());
+                    trafficMirror.recordUdp(request.host, request.port, packet.getLength(), false, "");
+                }
                 DatagramPacket out = new DatagramPacket(response, response.length, target);
                 clientSocket.send(out);
             } catch (IOException ignored) {
@@ -412,12 +434,14 @@ public final class DirectSocksProxy implements AutoCloseable {
         output.flush();
     }
 
-    private void pipe(InputStream input, Socket outputSocket) {
+    private void pipe(InputStream input, Socket outputSocket, Request request, boolean outbound) {
         try {
             OutputStream output = outputSocket.getOutputStream();
             byte[] buffer = new byte[32 * 1024];
             int read;
             while ((read = input.read(buffer)) >= 0) {
+                lastActivityAt.set(System.currentTimeMillis());
+                trafficMirror.recordTcpBytes(request.host, request.port, read, outbound);
                 output.write(buffer, 0, read);
                 output.flush();
             }
@@ -427,13 +451,15 @@ public final class DirectSocksProxy implements AutoCloseable {
         }
     }
 
-    private void pipe(Socket inputSocket, Socket outputSocket) {
+    private void pipe(Socket inputSocket, Socket outputSocket, Request request, boolean outbound) {
         try {
             InputStream input = inputSocket.getInputStream();
             OutputStream output = outputSocket.getOutputStream();
             byte[] buffer = new byte[32 * 1024];
             int read;
             while ((read = input.read(buffer)) >= 0) {
+                lastActivityAt.set(System.currentTimeMillis());
+                trafficMirror.recordTcpBytes(request.host, request.port, read, outbound);
                 output.write(buffer, 0, read);
                 output.flush();
             }
@@ -487,6 +513,27 @@ public final class DirectSocksProxy implements AutoCloseable {
         } catch (IOException ignored) {
         }
         workers.shutdownNow();
+        trafficMirror.close();
+    }
+
+    public long acceptedConnections() {
+        return acceptedConnections.get();
+    }
+
+    public long blockedRequests() {
+        return blockedRequests.get();
+    }
+
+    public long mirroredBytes() {
+        return trafficMirror.mirroredBytes();
+    }
+
+    public long analyzedFlows() {
+        return trafficMirror.analyzedFlows();
+    }
+
+    public long lastActivityAt() {
+        return Math.max(lastActivityAt.get(), trafficMirror.lastMirrorAt());
     }
 
     private static final class Request {

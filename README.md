@@ -4,7 +4,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 ## Temel yetenekler
 
-- 19 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
+- 20 adet kataloglu TFLite tespit/destek modeli ve ayri CyberShield Policy Assistant modeli uygulama icinde paketlenir; cihaz uzerinde offline inference yapar.
 - Foreground servis ile arka planda otomatik savunma calisir.
 - Bildirimler dogrudan ilgili mudahale ekranina gider.
 - Mudahale secenekleri: uyar, engelle, 1 saat gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina yonlendir.
@@ -26,8 +26,9 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | --- | ---: | ---: | ---: | --- |
 | Android Malware | 9503 | 94.85% | 97.07% | APK kurulum/degisimlerinde zararli yazilim riskini hesaplar; karantina ve kaldirma akisini tetikler. |
 | Android Malware Flow | 80 | 52.08%* | 99.02%* | CIC-AndMal2017 Android ag akislarindan yuksek-yakalama destek sinyali uretir; tek basina yikici karar vermez. |
+| Honeypot Threat Intelligence | 32 | 98.48%* | 90.01%* | Cowrie/Dionaea/Heralding/Honeytrap/Tanner/Mailoney ve SSH/Telnet/SMB/MSSQL/VNC port istatistiklerinden port-risk destek skoru uretir; tek basina engelleme kaniti degildir. |
 | Mirai Malware | 64 | 99.63% | 100.00% | Mirai benzeri IoT zararlilarini ve botnet davranislarini ayirt eder. |
-| Network Attack | 79 | 95.85% | 98.01% | VPN flow istatistiklerinden ag saldirisi riskini uretir. |
+| Network Anomaly Attack | 79 | 89.59% | 92.00% | `anomali/Dataset-Ready` CSV'lerinden egitilen binary model; VPN flow istatistiklerinden DDoS/DoS/SYN flood/port scan/brute force/web saldirisi riskini uretir. |
 | DNS Attack | 27 | 81.26% | 99.36% | DNS trafiginde saldiri yakalamayi onceliklendirir; yuksek recall nedeniyle uyari/blok politikasi icin uygundur. |
 | DoH L1 Detector | 29 | 99.23% | 98.91% | DoH / non-DoH ayrimini yapar ve supheli DoH trafigini L2 modele yollar. |
 | Malicious DoH L2 | 29 | 99.90% | 99.91% | DoH icinde zararli davranis olasiligini hesaplar; esik 0.2879624069. |
@@ -43,12 +44,15 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | CyberShield Policy Assistant | 16 | - | - | Tehdit tipi, kaynak, risk ve hedef sinyallerinden kullanici onayli mudahale onerisi uretir. |
 | Wi-Fi MITM / ARP Spoofing | 32 | 99.81% | 99.79% | Gateway MAC degisimi, IP/MAC cakismasi, ARP tablo dalgalanmasi ve model riskini birlestirir. |
 | Wi-Fi Threat Detector | 48 | 100.00%* | 100.00%* | ARP poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing ve SSL stripping veri setlerinden turetilen Wi-Fi riskini skorlar. |
+| Contextual Fraud / Account Anomaly | 120 | 36.29%* | 90.00%* | 110 kolonlu fraud/anomali parquet veri setinden egitilen yuksek-yakalama destek modeli; VPN/proxy/Tor, cihaz anomalisi, hesap ele gecirme ve LLM risk alanlarini policy/asistan sinyaline cevirir. |
 
 > Skorlar egitim/test veri setleri uzerinden olculmustur. Gercek saha trafiginde esik kalibrasyonu, loglama ve false-positive takibi gereklidir.
 > MITM/ARP modeli su anda sentetik/heuristic bootstrap veri setiyle egitildi; gercek lab ARP spoofing yakalamalariyla yeniden kalibre edilmesi onerilir.
 > Android Malware Flow modeli tum CIC-AndMal2017_raw CSV'lerini okuyarak egitildi; flow uyumlu 2.127 CSV egitime girdi, Drebin/MalDroid/Droidware statik dosyalari rapora alindi ancak VPN flow modeline karistirilmadi. Bu model yuksek recall destek sinyalidir; saha esigi 0.60 olarak baslatilir.
+> Honeypot Threat Intelligence modeli 2025-07-07 ile 2025-12-31 arasindaki honeypot zaman serilerinden turetilen risk etiketleri ve sentetik temiz platform trafigiyle egitildi. Bu model threat-intelligence destek katmanidir; ulke/port bilgisi tek basina otomatik engelleme sebebi yapilmaz.
 > Wi-Fi Threat Detector skoru veri seti icinde cok yuksektir; Android normal uygulamalari ham 802.11 monitor-mode frame okuyamadigi icin model Android'de SSID/BSSID/RSSI/gateway/ARP/VPN-DNS ipuclariyla uygulanir ve saha esigi 0.65 olarak baslatilir.
 > StealthPhisher2025 modelinde ham `URL`, `Domain`, `TLD` stringleri ve dis skor gibi duran `WAPLegitimate/WAPPhishing` alanlari ezberleme/sizinti riskine karsi modele alinmadi; bunlar yerine 59 uretilebilir sayisal ozellik kullanildi.
+> Contextual Fraud / Account Anomaly modeli yuksek recall icin ayarlandi ancak precision dusuktur; Android uzerinde dogrudan yikici karar degil, asistan/policy risk destegi olarak kullanilmalidir.
 
 ## Egitim ve donusturme ozeti
 
@@ -69,7 +73,10 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 10. APK statik feature cikarimi, Android PackageInfo disinda APK zip/dex/string sinyallerini de kullanacak sekilde genisletildi.
 11. Wi-Fi veri setlerinden 916.777 ornekle 48 feature'li `wifi_threat_detector.tflite` egitildi ve uygulamaya baglandi.
 12. CIC-AndMal2017_raw altindaki 2.131 CSV okunarak 80 feature'li `android_malware_flow_detector.tflite` egitildi; yuksek recall destek sinyali olarak VPN flow hattina baglandi.
-13. Telefonda self-test ile 19/19 modelin yuklendigi ve inference calistirdigi dogrulanmalidir.
+13. Honeypot port istihbarati verilerinden 32 feature'li `honeypot_threat_intel_detector.tflite` egitildi; SSH/Telnet/SMB/MSSQL/VNC riskini network/IoT/DNS modellerine destek sinyali olarak ekler.
+14. `anomali/Dataset-Ready` ag CSV'lerinden 79 feature'li binary `network_attack_detector.tflite` yeniden egitildi; threshold `0.2796932459`, attack precision `96.81%`, attack recall `92.00%`.
+15. `anomali` 110 kolonlu fraud/anomali parquet verisinden 120 feature'li `contextual_fraud_anomaly_detector.tflite` egitildi; bu model LLM degil, policy/asistan destek risk skorudur.
+16. Telefonda self-test ile 20/20 katalog modelinin yuklendigi ve inference calistirdigi dogrulanmalidir.
 
 ## Savunma mimarisi
 
@@ -85,6 +92,8 @@ flowchart LR
     VPN --> Flow[FlowTracker]
     VPN --> Engine
     Flow --> Engine
+    HONEY[Honeypot Port Threat Intel] --> Engine
+    CTX[Contextual Fraud / Account Anomaly] --> Assistant
     ARP[MITM/ARP Monitor] --> Engine
     WIFI[Wi-Fi Threat Monitor] --> Engine
     AndroidFlow[Android Malware Flow] --> Engine
@@ -104,11 +113,13 @@ flowchart LR
 - Bildirimdeki aksiyonlar olay detayina dogrudan gider.
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
 - Android Malware Flow modeli ayni VPN flow istatistiklerinden Android zararlı uygulama ag davranisi icin destek risk skoru uretir.
+- Contextual Fraud / Account Anomaly modeli 110 kolonlu fraud/anomali veri setinden gelen VPN/proxy/Tor, cihaz guvenligi, hesap davranisi ve LLM risk alanlarini kullanir; mobil uygulamada dogrudan kullanilabilir kaynak olmadiginda sadece policy/asistan destek skoru olarak paketlenir.
 - Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari yerel SOCKS koprusunde dusurulur.
 - Supheli Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; guvenli liste bu karari geri alabilir.
 - DNS leak protection modunda CyberShield tek resolver politikasi uygular. Varsayilan resolver Cloudflare `1.1.1.1`; kurulum ekranindan Quad9, Google veya AdGuard secilebilir.
 - MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 - Wi-Fi Threat Monitor SSID/BSSID, RSSI, guvenlik tipi, gateway MAC, ARP tablo oynakligi ve DNS/HTTP downgrade ipuclarindan 48 feature uretir; Android'in ham 802.11 frame siniri nedeniyle deauth/beacon/Evil Twin sinyalleri sahada dolayli belirtilerle yaklasiklanir.
+- Production alarm politikasi, guvenilir resolver/VPN ic adres/Google ve Samsung sistem servislerini kullanici bildirimi olarak yukseltmez. Google Play, Play Protect, Android sistem baglantilari, Samsung Galaxy Store, Samsung account/cloud/update/FOTA alan adlari VPN telemetrisinde false-positive whitelist olarak ele alinir. DoH L1 sadece sessiz kapi modeli olarak calisir; ayni hedef icin kisa surede tekrar eden model sinyalleri tek bildirimde tutulur.
 
 ## Android uygulama durumu
 
@@ -117,7 +128,7 @@ flowchart LR
 - Target SDK: 35
 - TFLite runtime: `org.tensorflow:tensorflow-lite:2.17.0`
 - Test cihaz: Samsung Galaxy A56 (`SM_A566B`)
-- Son beklenen self-test: 19 model OK
+- Son beklenen self-test: 20 katalog modeli OK
 - Launcher/adaptive icon eklendi.
 
 ## VPN ve Uretim Notu
@@ -133,6 +144,26 @@ Samsung Galaxy A56 testinde:
 - `tun0` aktif
 - TCP 443 baglanti testi basarili
 - ICMP ping beklenen sekilde basarisiz
+
+## Production hardening ve dogrulama
+
+Release build icin debug keystore kullanimi kaldirildi. Imzalama, ortam degiskenleri veya `~/.android/cybershield-release.properties` dosyasi uzerinden verilen yerel release keystore ile yapilir. R8 minify/resource shrink aktiftir.
+
+Production APK icinde test/laboratuvar ekranlari disaridan acilmaz:
+
+- `SelfTestActivity`
+- `AttackSimulationActivity`
+- `SourceFieldTestActivity`
+- `CalibrationActivity`
+
+Ag guvenligi tarafinda cleartext trafik kapatildi ve `network_security_config.xml` ile yalnizca sistem sertifika deposu guvenilir kabul edildi. Sertifika pinning ve MITM proxy testleri ayri saha dogrulamasi gerektirir.
+
+AMTSO Android malware/phishing guvenli testleri, AV-TEST tarzinda batarya/yavaslama/false-positive olcumleri ve MASA/OWASP bagimsiz inceleme hazirliklari icin ayrintili plan:
+
+- `docs/SECURITY_VALIDATION_PLAN.md`
+- `docs/PRODUCTION_HARDENING.md`
+
+Android platform sinirlari gecerlidir: root/MDM/router entegrasyonu olmadan sessiz APK silme, modemden saldirgan cihaz atma, router firewall kurali yazma veya baska fiziksel cihazi karantinaya alma yapilamaz. CyberShield kullanici onayli kaldirma ekrani, VPN/DNS/proxy bloklama, guvenli liste, supheli Wi-Fi isaretleme ve aksiyonlu bildirim mekanizmalariyla calisir.
 
 ## Derleme
 

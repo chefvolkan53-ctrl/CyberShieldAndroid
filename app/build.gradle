@@ -2,6 +2,21 @@ plugins {
     id "com.android.application"
 }
 
+def releaseSigningProps = new Properties()
+def releaseSigningPropsPath = System.getenv("CYBERSHIELD_RELEASE_PROPS")
+def releaseSigningPropsFile = releaseSigningPropsPath != null && !releaseSigningPropsPath.trim().isEmpty()
+        ? file(releaseSigningPropsPath)
+        : file(System.properties["user.home"] + "/.android/cybershield-release.properties")
+if (releaseSigningPropsFile.exists()) {
+    releaseSigningPropsFile.withInputStream { releaseSigningProps.load(it) }
+}
+
+def releaseStoreFile = System.getenv("CYBERSHIELD_KEYSTORE") ?: releaseSigningProps.getProperty("storeFile")
+def releaseStorePassword = System.getenv("CYBERSHIELD_KEYSTORE_PASSWORD") ?: releaseSigningProps.getProperty("storePassword")
+def releaseKeyAlias = System.getenv("CYBERSHIELD_KEY_ALIAS") ?: releaseSigningProps.getProperty("keyAlias")
+def releaseKeyPassword = System.getenv("CYBERSHIELD_KEY_PASSWORD") ?: releaseSigningProps.getProperty("keyPassword")
+def hasReleaseSigning = releaseStoreFile != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+
 android {
     namespace "com.monster.cybershield"
     compileSdk 35
@@ -15,19 +30,24 @@ android {
     }
 
     signingConfigs {
-        release {
-            storeFile file(System.properties["user.home"] + "/.android/debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            shrinkResources false
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 

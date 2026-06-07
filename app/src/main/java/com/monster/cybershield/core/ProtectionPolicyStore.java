@@ -14,6 +14,7 @@ public final class ProtectionPolicyStore {
     private static final String KEY_DNS_LEAK_PROTECTION = "dns_leak_protection";
     private static final String KEY_DNS_PROVIDER = "dns_provider";
     private static final String KEY_BLOCK_DOH_WHEN_STRICT = "block_doh_when_strict";
+    private static final String KEY_FULL_VPN_FORWARDING = "full_vpn_forwarding";
     private static final long HTTP_ALERT_COOLDOWN_MS = 10 * 60 * 1000L;
     private static final long DNS_LEAK_ALERT_COOLDOWN_MS = 10 * 60 * 1000L;
     public static final String DNS_CLOUDFLARE = "1.1.1.1";
@@ -60,6 +61,14 @@ public final class ProtectionPolicyStore {
 
     public boolean shouldBlockCleartextHttp() {
         return isStrictVpnRequired();
+    }
+
+    public void setFullVpnForwardingEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_FULL_VPN_FORWARDING, enabled).apply();
+    }
+
+    public boolean isFullVpnForwardingEnabled() {
+        return prefs.getBoolean(KEY_FULL_VPN_FORWARDING, false);
     }
 
     public void setDnsLeakProtection(boolean enabled) {
@@ -115,7 +124,8 @@ public final class ProtectionPolicyStore {
 
     public String dnsLeakProtectionSummary() {
         return "DNS leak protection: " + (isDnsLeakProtectionEnabled() ? "ACIK" : "KAPALI")
-                + " | Resolver: " + dnsProvider();
+                + " | Resolver: " + dnsProvider()
+                + " | Tam VPN: " + (isFullVpnForwardingEnabled() ? "ACIK" : "UYUMLU MOD");
     }
 
     private static boolean containsDohHost(String host) {

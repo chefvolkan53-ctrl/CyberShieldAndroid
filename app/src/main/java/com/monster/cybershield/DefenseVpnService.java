@@ -27,6 +27,7 @@ public class DefenseVpnService extends VpnService {
     private ParcelFileDescriptor vpnInterface;
     private DirectSocksProxy directSocksProxy;
     private Thread readerThread;
+    private Thread forwarderHealthThread;
     private volatile boolean running;
     private volatile boolean nativeForwarding;
 
@@ -41,6 +42,11 @@ public class DefenseVpnService extends VpnService {
         running = false;
         stopNativeForwarding();
         closeVpnInterface();
+        getSharedPreferences("vpn_status", MODE_PRIVATE)
+                .edit()
+                .putBoolean("native_forwarding", false)
+                .putString("mode", "stopped")
+                .apply();
         super.onDestroy();
     }
 
@@ -48,7 +54,8 @@ public class DefenseVpnService extends VpnService {
         if (vpnInterface != null) {
             return;
         }
-        boolean canForwardAllTraffic = NativeVpnForwarder.isAvailable();
+        ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
+        boolean canForwardAllTraffic = NativeVpnForwarder.isAvailable() && policy.isFullVpnForwardingEnabled();
         establishTunnel(canForwardAllTraffic);
         nativeForwarding = startNativeForwardingIfAvailable(canForwardAllTraffic);
         if (!nativeForwarding) {
@@ -89,7 +96,7 @@ public class DefenseVpnService extends VpnService {
             getSharedPreferences("vpn_status", MODE_PRIVATE)
                     .edit()
                     .putBoolean("native_forwarding", false)
-                    .putString("mode", "safe_telemetry_routes")
+                    .putString("mode", "compatibility_safe_routes")
                     .apply();
             return false;
         }
@@ -99,8 +106,11 @@ public class DefenseVpnService extends VpnService {
             String configPath = writeForwarderConfig();
             int status = NativeVpnForwarder.start(configPath, vpnInterface.getFd(), VPN_MTU);
             boolean ok = status == 0;
+            nativeForwarding = ok;
             if (!ok) {
                 stopNativeForwarding();
+            } else {
+                startForwarderHealthMonitor();
             }
             getSharedPreferences("vpn_status", MODE_PRIVATE)
                     .edit()
@@ -138,6 +148,10 @@ public class DefenseVpnService extends VpnService {
 
     private void stopNativeForwarding() {
         NativeVpnForwarder.stop();
+        if (forwarderHealthThread != null) {
+            forwarderHealthThread.interrupt();
+            forwarderHealthThread = null;
+        }
         if (directSocksProxy != null) {
             try {
                 directSocksProxy.close();
@@ -146,6 +160,45 @@ public class DefenseVpnService extends VpnService {
             directSocksProxy = null;
         }
         nativeForwarding = false;
+    }
+
+    private void startForwarderHealthMonitor() {
+        if (forwarderHealthThread != null) {
+            return;
+        }
+        forwarderHealthThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (!Thread.currentThread().isInterrupted() && nativeForwarding) {
+                    updateForwarderHealth();
+                    try {
+                        Thread.sleep(5_000L);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            }
+        }, "cybershield-forwarder-health");
+        forwarderHealthThread.start();
+    }
+
+    private void updateForwarderHealth() {
+        DirectSocksProxy proxy = directSocksProxy;
+        long[] stats = NativeVpnForwarder.stats();
+        long nativeRx = stats.length > 0 ? stats[0] : 0L;
+        long nativeTx = stats.length > 1 ? stats[1] : 0L;
+        getSharedPreferences("vpn_status", MODE_PRIVATE)
+                .edit()
+                .putBoolean("native_forwarding", nativeForwarding)
+                .putString("mode", nativeForwarding ? "full_device_forwarding" : "stopped")
+                .putLong("native_rx", nativeRx)
+                .putLong("native_tx", nativeTx)
+                .putLong("proxy_connections", proxy == null ? 0L : proxy.acceptedConnections())
+                .putLong("proxy_blocked", proxy == null ? 0L : proxy.blockedRequests())
+                .putLong("proxy_mirrored_bytes", proxy == null ? 0L : proxy.mirroredBytes())
+                .putLong("proxy_analyzed_flows", proxy == null ? 0L : proxy.analyzedFlows())
+                .putLong("proxy_last_activity", proxy == null ? 0L : proxy.lastActivityAt())
+                .apply();
     }
 
     private void closeVpnInterface() {

@@ -16,6 +16,7 @@ import android.os.IBinder;
 
 import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
+import com.monster.cybershield.core.AlertNoisePolicy;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.MitmArpMonitor;
 import com.monster.cybershield.core.PolicyAssistantText;
@@ -45,12 +46,15 @@ public class CyberDefenseService extends Service {
     private ModelCatalog catalog;
     private MitmArpMonitor mitmArpMonitor;
     private WifiThreatMonitor wifiThreatMonitor;
+    private AlertNoisePolicy alertNoisePolicy;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createChannels();
+        clearOldAlertNotificationsOnce();
         catalog = ModelCatalog.load(this);
+        alertNoisePolicy = new AlertNoisePolicy(this);
         mitmArpMonitor = new MitmArpMonitor(this);
         wifiThreatMonitor = new WifiThreatMonitor(this);
         workerThread = new HandlerThread("cyber-defense-worker");
@@ -121,7 +125,14 @@ public class CyberDefenseService extends Service {
         if (blocklist.isAllowed(target)) {
             return;
         }
-        ThreatEvent event = new ThreatStore(this).add(modelId, title, source, target, severity, probability, recommendedAction);
+        if (alertNoisePolicy != null && alertNoisePolicy.shouldSuppressModelEvent(modelId, source, target)) {
+            return;
+        }
+        ThreatStore threatStore = new ThreatStore(this);
+        if (alertNoisePolicy != null && threatStore.hasRecentTarget(target, alertNoisePolicy.dedupWindowMs())) {
+            return;
+        }
+        ThreatEvent event = threatStore.add(modelId, title, source, target, severity, probability, recommendedAction);
         enforcePhoneProtection(event);
         notifyThreat(event);
     }
@@ -207,7 +218,18 @@ public class CyberDefenseService extends Service {
                 .build();
 
         NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        manager.notify(event.id.hashCode(), notification);
+        manager.notify(AlertNoisePolicy.notificationIdFor(event.target), notification);
+    }
+
+    private void clearOldAlertNotificationsOnce() {
+        android.content.SharedPreferences prefs = getSharedPreferences("alert_noise_policy", MODE_PRIVATE);
+        int policyVersion = 8;
+        if (prefs.getInt("cleared_for_policy_version", 0) >= policyVersion) {
+            return;
+        }
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        manager.cancelAll();
+        prefs.edit().putInt("cleared_for_policy_version", policyVersion).apply();
     }
 
     private void createChannels() {

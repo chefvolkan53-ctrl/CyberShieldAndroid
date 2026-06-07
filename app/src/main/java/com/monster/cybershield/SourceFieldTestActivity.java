@@ -14,6 +14,7 @@ import android.widget.TextView;
 import com.monster.cybershield.core.FeatureExtractor;
 import com.monster.cybershield.core.ModelCalibrationStore;
 import com.monster.cybershield.core.NativeVpnForwarder;
+import com.monster.cybershield.core.ProtectionPolicyStore;
 import com.monster.cybershield.core.ThreatEngine;
 
 public class SourceFieldTestActivity extends Activity {
@@ -42,7 +43,18 @@ public class SourceFieldTestActivity extends Activity {
         builder.append("Bildirim: ").append(android.os.Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)).append('\n');
         builder.append("VPN izin hazir: ").append(VpnService.prepare(this) == null).append('\n');
         builder.append("Native VPN forwarding kutuphanesi: ").append(NativeVpnForwarder.isAvailable()).append('\n');
-        builder.append("VPN modu: ").append(getSharedPreferences("vpn_status", MODE_PRIVATE).getString("mode", "not_started")).append('\n');
+        ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
+        boolean fullVpnEnabled = policy.isFullVpnForwardingEnabled();
+        builder.append("Tam VPN ayari: ").append(fullVpnEnabled).append('\n');
+        String vpnMode = fullVpnEnabled
+                ? getSharedPreferences("vpn_status", MODE_PRIVATE).getString("mode", "not_started")
+                : "compatibility_safe_routes";
+        builder.append("VPN modu: ").append(vpnMode).append('\n');
+        android.content.SharedPreferences vpnStatus = getSharedPreferences("vpn_status", MODE_PRIVATE);
+        builder.append("Proxy baglanti: ").append(vpnStatus.getLong("proxy_connections", 0L)).append('\n');
+        builder.append("Proxy mirror byte: ").append(vpnStatus.getLong("proxy_mirrored_bytes", 0L)).append('\n');
+        builder.append("Proxy analiz edilen flow: ").append(vpnStatus.getLong("proxy_analyzed_flows", 0L)).append('\n');
+        builder.append("Native rx/tx: ").append(vpnStatus.getLong("native_rx", 0L)).append('/').append(vpnStatus.getLong("native_tx", 0L)).append('\n');
         builder.append("SMS receiver: ").append(receiverAvailable(SmsThreatReceiver.class)).append('\n');
         builder.append("APK receiver: ").append(receiverAvailable(PackageThreatReceiver.class)).append('\n');
         builder.append("Link scanner: ").append(activityAvailable(LinkScanActivity.class)).append('\n');

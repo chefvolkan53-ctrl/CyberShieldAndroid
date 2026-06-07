@@ -59,7 +59,6 @@ public final class FeatureSchema {
         for (int i = 0; i < size && i < columns.size(); i++) {
             values[i] = valueForPacket(columns.get(i), packet);
         }
-        fillRemaining(values, packet.sourceAddress + packet.destinationAddress + packet.queryName);
         return scale(values);
     }
 
@@ -68,7 +67,6 @@ public final class FeatureSchema {
         for (int i = 0; i < size && i < columns.size(); i++) {
             values[i] = valueForFlow(columns.get(i), flow);
         }
-        fillRemaining(values, flow.key.sourceAddress + flow.key.destinationAddress + flow.lastQueryName);
         return scale(values);
     }
 
@@ -110,6 +108,38 @@ public final class FeatureSchema {
     private float valueForFlow(String column, FlowStats flow) {
         String c = column == null ? "" : column.toLowerCase(Locale.US);
         String compact = c.replace("_", " ").replace("-", " ");
+        if (c.equals("dst_port_norm")) return flow.key.destinationPort / 65535.0f;
+        if (c.equals("is_ssh_22")) return flow.key.destinationPort == 22 ? 1f : 0f;
+        if (c.equals("is_telnet_23")) return flow.key.destinationPort == 23 ? 1f : 0f;
+        if (c.equals("is_smb_445")) return flow.key.destinationPort == 445 ? 1f : 0f;
+        if (c.equals("is_mssql_1433")) return flow.key.destinationPort == 1433 ? 1f : 0f;
+        if (c.equals("is_vnc_5900")) return flow.key.destinationPort == 5900 ? 1f : 0f;
+        if (c.equals("is_known_honeypot_port")) return isHoneypotRiskPort(flow.key.destinationPort) ? 1f : 0f;
+        if (c.equals("port_attack_prior")) return honeypotPortPrior(flow.key.destinationPort);
+        if (c.equals("port_attack_count_scaled")) return logScale(estimatedPortPressure(flow), 13178f);
+        if (c.equals("global_attack_count_scaled")) return 0.50f * honeypotPortPrior(flow.key.destinationPort);
+        if (c.equals("unique_ip_count_scaled")) return 0f;
+        if (c.equals("honeypot_cowrie_scaled")) return flow.key.destinationPort == 22 || flow.key.destinationPort == 23 ? 1f : 0f;
+        if (c.equals("honeypot_dionaea_scaled")) return flow.key.destinationPort == 445 || flow.key.destinationPort == 1433 ? 1f : 0f;
+        if (c.equals("honeypot_heralding_scaled")) return flow.key.destinationPort == 5900 ? 1f : 0f;
+        if (c.equals("honeypot_honeytrap_scaled")) return isHoneypotRiskPort(flow.key.destinationPort) ? 0.25f : 0f;
+        if (c.equals("honeypot_tanner_scaled")) return flow.key.destinationPort == 22 || flow.key.destinationPort == 23 ? 0.35f : 0f;
+        if (c.equals("honeypot_mailoney_scaled")) return 0f;
+        if (c.equals("flow_packet_count_scaled")) return logScale(flow.packetCount, 4000f);
+        if (c.equals("flow_byte_count_scaled")) return logScale(flow.byteCount, 320000f);
+        if (c.equals("flow_packets_per_second_scaled")) return logScale(flow.packetsPerSecond(), 800f);
+        if (c.equals("flow_bytes_per_second_scaled")) return logScale(flow.bytesPerSecond(), 64000f);
+        if (c.equals("flow_duration_scaled")) return Math.min(1f, flow.durationMs() / 60000f);
+        if (c.equals("tcp_flag_syn_ratio")) return flow.tcpPackets == 0 ? 0f : flow.synPackets / (float) flow.tcpPackets;
+        if (c.equals("tcp_flag_rst_ratio")) return flow.tcpPackets == 0 ? 0f : flow.rstPackets / (float) flow.tcpPackets;
+        if (c.equals("tcp_flag_ack_ratio")) return flow.tcpPackets == 0 ? 0f : flow.ackPackets / (float) flow.tcpPackets;
+        if (c.equals("dns_flow_hint")) return flow.dnsPackets > 0 ? 1f : 0f;
+        if (c.equals("doh_flow_hint")) return flow.dohPackets > 0 || flow.key.destinationPort == 853 ? 1f : 0f;
+        if (c.equals("tcp_flow_hint")) return flow.tcpPackets > 0 || flow.key.protocol == 6 ? 1f : 0f;
+        if (c.equals("udp_flow_hint")) return flow.udpPackets > 0 || flow.key.protocol == 17 ? 1f : 0f;
+        if (c.equals("bruteforce_scan_hint")) return bruteforceScanHint(flow);
+        if (c.equals("high_unique_ip_hint")) return 0f;
+        if (c.equals("bias")) return 1f;
         if (c.contains("src") && c.contains("port")) return flow.key.sourcePort;
         if ((c.contains("dst") || c.contains("dest")) && c.contains("port")) return flow.key.destinationPort;
         if (c.contains("protocol") || c.equals("proto")) return flow.key.protocol;
@@ -257,6 +287,37 @@ public final class FeatureSchema {
         return 0f;
     }
 
+    private static boolean isHoneypotRiskPort(int port) {
+        return port == 22 || port == 23 || port == 445 || port == 1433 || port == 5900;
+    }
+
+    private static float honeypotPortPrior(int port) {
+        if (port == 5900) return 1.0f;
+        if (port == 1433) return 1294131f / 1375095f;
+        if (port == 445) return 1177719f / 1375095f;
+        if (port == 22) return 1096773f / 1375095f;
+        if (port == 23) return 65230f / 1375095f;
+        return 0f;
+    }
+
+    private static float estimatedPortPressure(FlowStats flow) {
+        float multiplier = isHoneypotRiskPort(flow.key.destinationPort) ? 25f : 1f;
+        float flagPressure = flow.synPackets * 40f + flow.rstPackets * 20f;
+        return Math.max(flow.packetCount * multiplier, flagPressure);
+    }
+
+    private static float bruteforceScanHint(FlowStats flow) {
+        float synRatio = flow.tcpPackets == 0 ? 0f : flow.synPackets / (float) flow.tcpPackets;
+        float rstRatio = flow.tcpPackets == 0 ? 0f : flow.rstPackets / (float) flow.tcpPackets;
+        float portHint = isHoneypotRiskPort(flow.key.destinationPort) ? 0.55f : 0f;
+        float rateHint = Math.min(0.30f, flow.packetsPerSecond() / 1000f);
+        return Math.min(1f, portHint + 0.35f * synRatio + 0.25f * rstRatio + rateHint);
+    }
+
+    private static float logScale(double value, double denom) {
+        return (float) (Math.log1p(Math.max(0.0, value)) / Math.log1p(Math.max(1.0, denom)));
+    }
+
     private static float combinedPayloadMean(FlowStats flow) {
         int count = flow.fwd.payloadLength.count + flow.bwd.payloadLength.count;
         if (count == 0) {
@@ -285,14 +346,6 @@ public final class FeatureSchema {
             values[i] = (values[i] - mean[i]) / denominator;
         }
         return values;
-    }
-
-    private void fillRemaining(float[] values, String seed) {
-        for (int i = 0; i < values.length; i++) {
-            if (values[i] == 0f) {
-                values[i] = (((seed + "|" + i).hashCode() & 0xFF) / 255.0f) * 0.01f;
-            }
-        }
     }
 
     private static JSONArray firstArray(JSONObject json, String... keys) {

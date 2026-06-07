@@ -56,6 +56,9 @@ public final class PolicyAssistantText {
         if ("android_malware_flow".equals(event.modelId)) {
             return target + " Android malware ag davranisi modelinde riskli gorundu; bunu tek basina kesin karar degil, network/APK/DNS sinyallerini destekleyen yuksek yakalama sinyali olarak kullaniyorum.";
         }
+        if ("honeypot_threat_intel".equals(event.modelId)) {
+            return target + " global honeypot istihbaratinda yuksek riskli servis/port davranisina benziyor; bunu tek basina engelleme kaniti degil, network/IoT/DNS kararlarini guclendiren destek sinyali olarak kullaniyorum.";
+        }
         if ("temporary_block".equals(action)) {
             return target + " icin kalici karar vermeden once 1 saatlik gecici engel oneriyorum.";
         }
@@ -95,6 +98,9 @@ public final class PolicyAssistantText {
         }
         if ("android_malware_flow".equals(event.modelId)) {
             return "Android malware flow modeli " + source + " kaynaginda " + percent + " risk hesapladi; CIC-AndMal2017 Android benign/adware/ransomware/scareware/SMS malware ag akislarindan egitilen 80 flow ozelligi kullanildi.";
+        }
+        if ("honeypot_threat_intel".equals(event.modelId)) {
+            return "Honeypot threat-intelligence modeli " + source + " kaynaginda " + percent + " risk hesapladi; Cowrie, Dionaea, Heralding, Honeytrap, Tanner ve Mailoney istatistikleri ile SSH/Telnet/SMB/MSSQL/VNC port yogunlugu sinyallerinden turetilen 32 ozellik kullanildi.";
         }
         if (event.probability >= 0.85) {
             return model + " modeli " + source + " kaynaginda cok yuksek risk (" + percent + ") verdi.";

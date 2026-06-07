@@ -46,15 +46,15 @@
     },
     {
       "id": "network_attack",
-      "title": "Network Attack",
+      "title": "Network Anomaly Attack",
       "asset": "models/network_attack_detector.tflite",
       "input_size": 79,
       "outputs": [
-        "class_6"
+        "attack_probability"
       ],
-      "threshold": 0.7231243849,
-      "accuracy": 0.9584635083,
-      "recall": 0.9800776386,
+      "threshold": 0.27969324588775635,
+      "accuracy": 0.8958948176130327,
+      "recall": 0.9200015638439284,
       "interventions": [
         "warn",
         "block_flow",
@@ -312,6 +312,40 @@
         "warn",
         "raise_risk_score",
         "block_flow"
+      ]
+    },
+    {
+      "id": "honeypot_threat_intel",
+      "title": "Honeypot Threat Intelligence",
+      "asset": "models/honeypot_threat_intel_detector.tflite",
+      "input_size": 32,
+      "outputs": [
+        "honeypot_port_risk_probability"
+      ],
+      "threshold": 0.9999997615814209,
+      "accuracy": 0.9848125648,
+      "recall": 0.9001218027,
+      "interventions": [
+        "warn",
+        "raise_risk_score",
+        "explain_only"
+      ]
+    },
+    {
+      "id": "contextual_fraud_anomaly",
+      "title": "Contextual Fraud / Account Anomaly",
+      "asset": "models/contextual_fraud_anomaly_detector.tflite",
+      "input_size": 120,
+      "outputs": [
+        "fraud_anomaly_probability"
+      ],
+      "threshold": 0.3608638644218445,
+      "accuracy": 0.36291666666666667,
+      "recall": 0.9000190439916207,
+      "interventions": [
+        "raise_risk_score",
+        "explain_only",
+        "require_vpn"
       ]
     }
   ]

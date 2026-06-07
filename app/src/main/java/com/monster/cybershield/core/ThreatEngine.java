@@ -21,10 +21,12 @@ public final class ThreatEngine {
     private final FeatureSchema networkSchema;
     private final FeatureSchema androidMalwareFlowSchema;
     private final FeatureSchema iotSchema;
+    private final FeatureSchema honeypotThreatIntelSchema;
     private final FeatureSchema pqcSchema;
     private final FeatureSchema socialUrlSchema;
     private final ModelCalibrationStore calibrationStore;
     private final PolicyInterventionModel policyModel;
+    private final AlertNoisePolicy alertNoisePolicy;
 
     public ThreatEngine(Context context) {
         this.context = context.getApplicationContext();
@@ -35,9 +37,11 @@ public final class ThreatEngine {
         this.networkSchema = FeatureSchema.load(context, "network_labels.json", 79);
         this.androidMalwareFlowSchema = FeatureSchema.load(context, "android_malware_flow_feature_metadata.json", 80);
         this.iotSchema = FeatureSchema.load(context, "iot_labels.json", 71);
+        this.honeypotThreatIntelSchema = FeatureSchema.load(context, "honeypot_threat_intel_feature_metadata.json", 32);
         this.pqcSchema = FeatureSchema.load(context, "post_quantum_binary_labels.json", 32);
         this.socialUrlSchema = FeatureSchema.load(context, "social_url_metadata.json", 48);
         this.calibrationStore = new ModelCalibrationStore(context);
+        this.alertNoisePolicy = new AlertNoisePolicy(context);
         PolicyInterventionModel loadedPolicy;
         try {
             loadedPolicy = new PolicyInterventionModel(context);
@@ -48,13 +52,24 @@ public final class ThreatEngine {
     }
 
     public ThreatScore analyze(String modelId, float[] features, String source, String target, String title) {
+        if (alertNoisePolicy.shouldSuppressModelEvent(modelId, source, target)) {
+            return null;
+        }
+        return analyzeInternal(modelId, features, source, target, title, true);
+    }
+
+    private ThreatScore scoreOnly(String modelId, float[] features) {
+        return analyzeInternal(modelId, features, "", "", "", false);
+    }
+
+    private ThreatScore analyzeInternal(String modelId, float[] features, String source, String target, String title, boolean raiseActionable) {
         ModelSpec spec = catalog.byId(modelId);
         if (spec == null) {
             return null;
         }
         try (TfliteThreatModel model = new TfliteThreatModel(context, spec)) {
             ThreatScore score = model.run(features);
-            if (isActionable(spec, score)) {
+            if (raiseActionable && isActionable(spec, score)) {
                 float probability = Math.max(score.risk, score.confidence);
                 PolicyDecision decision = decide(spec, score, source);
                 raise(modelId, title, source, target, severity(probability), probability, decision.action);
@@ -86,15 +101,18 @@ public final class ThreatEngine {
             return;
         }
         if (packet.isDns) {
-            analyze("dns_stateful", dnsSchema.packet(packet, 27), "vpn_dns", packet.target(), "DNS saldiri riski");
+            if (alertNoisePolicy.isSuspiciousDnsQuery(packet.target())) {
+                analyze("dns_stateful", dnsSchema.packet(packet, 27), "vpn_dns", packet.target(), "DNS saldiri riski");
+            } else {
+                scoreOnly("dns_stateful", dnsSchema.packet(packet, 27));
+            }
         }
-        if (packet.isDohLike) {
-            ThreatScore l1 = analyze("doh_l1", dohL1Schema.packet(packet, 29), "vpn_doh", packet.target(), "DoH trafigi algilandi");
-            if (l1 != null && (l1.actionable || l1.confidence >= 0.5f)) {
+        if (packet.isDohLike && alertNoisePolicy.isLikelyEncryptedDnsTarget(packet.target())) {
+            ThreatScore l1 = scoreOnly("doh_l1", dohL1Schema.packet(packet, 29));
+            if (l1 != null && (l1.actionable || l1.confidence >= 0.5f)
+                    && !alertNoisePolicy.isTrustedNetworkTarget(packet.target())) {
                 analyze("doh_l2", dohL2Schema.packet(packet, 29), "vpn_doh", packet.target(), "Zararli DoH riski");
             }
-            analyze("attack_anomaly", pqcSchema.pqc(packet.target(), 32), "vpn_tls", packet.target(), "TLS/session anomali riski");
-            analyze("post_quantum", pqcSchema.pqc(packet.target(), 32), "vpn_pqc", packet.target(), "Post-kuantum anomali riski");
         }
     }
 
@@ -103,12 +121,17 @@ public final class ThreatEngine {
             return;
         }
         String target = flow.target();
-        analyze("network_attack", networkSchema.flow(flow, 79), "vpn_flow", target, "Ag saldirisi riski");
-        analyze("android_malware_flow", androidMalwareFlowSchema.flow(flow, 80), "vpn_android_flow", target, "Android malware ag davranisi riski");
-        analyze("iot_attack", iotSchema.flow(flow, 71), "vpn_iot", target, "IoT/IIoT saldirisi riski");
-        if (flow.dohPackets > 0 || flow.key.destinationPort == 443 || flow.key.sourcePort == 443) {
-            analyze("attack_anomaly", pqcSchema.pqc(target, 32), "vpn_tls", target, "TLS/session anomali riski");
-            analyze("post_quantum", pqcSchema.pqc(target, 32), "vpn_pqc", target, "Post-kuantum anomali riski");
+        if (alertNoisePolicy.shouldScoreOnlyNetworkFlow(flow)) {
+            scoreOnly("network_attack", networkSchema.flow(flow, 79));
+        } else {
+            analyze("network_attack", networkSchema.flow(flow, 79), "vpn_flow", target, "Ag saldirisi riski");
+        }
+        scoreOnly("honeypot_threat_intel", honeypotThreatIntelSchema.flow(flow, 32));
+        scoreOnly("android_malware_flow", androidMalwareFlowSchema.flow(flow, 80));
+        scoreOnly("iot_attack", iotSchema.flow(flow, 71));
+        if (flow.dohPackets > 0 && alertNoisePolicy.isLikelyEncryptedDnsTarget(target) && !alertNoisePolicy.isTrustedNetworkTarget(target)) {
+            scoreOnly("attack_anomaly", pqcSchema.pqc(target, 32));
+            scoreOnly("post_quantum", pqcSchema.pqc(target, 32));
         }
     }
 
@@ -153,6 +176,9 @@ public final class ThreatEngine {
         if ("android_malware_flow".equals(spec.id) && probability >= 0.78f) {
             return new PolicyDecision("block_flow", 1.0f);
         }
+        if ("honeypot_threat_intel".equals(spec.id) && probability >= 0.90f) {
+            return new PolicyDecision("explain_only", 1.0f);
+        }
         if (("network_attack".equals(spec.id) || "iot_attack".equals(spec.id) || "doh_l2".equals(spec.id)
                 || "post_quantum".equals(spec.id)) && probability >= 0.75f) {
             return new PolicyDecision("block_flow", 1.0f);
@@ -186,6 +212,15 @@ public final class ThreatEngine {
             return false;
         }
         float probability = Math.max(score.risk, score.confidence);
+        if ("android_malware_flow".equals(spec.id) || "iot_attack".equals(spec.id)) {
+            threshold = Math.max(threshold, 0.995);
+            return probability >= threshold;
+        } else if ("attack_anomaly".equals(spec.id) || "post_quantum".equals(spec.id)) {
+            threshold = Math.max(threshold, 0.90);
+            return probability >= threshold;
+        } else if ("doh_l1".equals(spec.id)) {
+            return false;
+        }
         return score.actionable || probability >= threshold;
     }
 

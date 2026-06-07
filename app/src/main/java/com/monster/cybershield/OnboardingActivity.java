@@ -44,12 +44,19 @@ public class OnboardingActivity extends Activity {
         root.addView(status("SMS korumasi", hasSmsPermission()));
         root.addView(status("Wi-Fi risk izni", hasWifiRiskPermission()));
         root.addView(status("VPN", VpnService.prepare(this) == null));
-        root.addView(status("DNS leak korumasi", new ProtectionPolicyStore(this).isDnsLeakProtectionEnabled()));
+        ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
+        root.addView(status("DNS leak korumasi", policy.isDnsLeakProtectionEnabled()));
+        root.addView(status("Tam VPN forwarding", policy.isFullVpnForwardingEnabled()));
         root.addView(status("Android Private DNS kapali", !isPrivateDnsActive()));
         root.addView(button(hasNotificationPermission() ? "Bildirim izni acik" : "Bildirim izni ver", v -> requestNotificationPermission()));
         root.addView(button(hasSmsPermission() ? "SMS korumasi acik" : "SMS korumasi izni ver", v -> requestSmsPermission()));
         root.addView(button(hasWifiRiskPermission() ? "Wi-Fi risk izni acik" : "Wi-Fi risk izni ver", v -> requestWifiRiskPermission()));
+        root.addView(button("Siki VPN/DNS korumasini ac", v -> enableStrictDnsVpnProtection()));
+        root.addView(button("Siki korumayi kapat / uyumlu moda don", v -> disableStrictDnsVpnProtection()));
+        root.addView(button("Uyumlu internet modu", v -> setFullVpnForwarding(false)));
+        root.addView(button("Tam VPN / DNS leak kilidi", v -> setFullVpnForwarding(true)));
         root.addView(button("DNS leak korumasini ac", v -> setDnsLeakProtection(true)));
+        root.addView(button("DNS leak korumasini kapat", v -> setDnsLeakProtection(false)));
         root.addView(button("DNS resolver: Cloudflare", v -> setDnsResolver(ProtectionPolicyStore.DNS_CLOUDFLARE)));
         root.addView(button("DNS resolver: Quad9", v -> setDnsResolver(ProtectionPolicyStore.DNS_QUAD9)));
         root.addView(button("DNS resolver: Google", v -> setDnsResolver(ProtectionPolicyStore.DNS_GOOGLE)));
@@ -103,7 +110,14 @@ public class OnboardingActivity extends Activity {
 
     private void setDnsLeakProtection(boolean enabled) {
         new ProtectionPolicyStore(this).setDnsLeakProtection(enabled);
-        Toast.makeText(this, "DNS leak korumasi acik", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, enabled ? "DNS leak korumasi acik" : "DNS leak korumasi kapali", Toast.LENGTH_SHORT).show();
+        render();
+    }
+
+    private void setFullVpnForwarding(boolean enabled) {
+        new ProtectionPolicyStore(this).setFullVpnForwardingEnabled(enabled);
+        Toast.makeText(this, enabled ? "Tam VPN modu acildi" : "Uyumlu internet modu acildi", Toast.LENGTH_SHORT).show();
+        stopService(new Intent(this, DefenseVpnService.class));
         render();
     }
 
@@ -112,6 +126,30 @@ public class OnboardingActivity extends Activity {
         store.setDnsLeakProtection(true);
         store.setDnsProvider(resolver);
         Toast.makeText(this, "DNS resolver ayarlandi: " + resolver, Toast.LENGTH_SHORT).show();
+        render();
+    }
+
+    private void enableStrictDnsVpnProtection() {
+        ProtectionPolicyStore store = new ProtectionPolicyStore(this);
+        store.setDnsLeakProtection(true);
+        store.setFullVpnForwardingEnabled(true);
+        store.setDnsProvider(ProtectionPolicyStore.DNS_CLOUDFLARE);
+        stopService(new Intent(this, DefenseVpnService.class));
+        if (isPrivateDnsActive()) {
+            Toast.makeText(this, "Android Private DNS'i kapatip geri don", Toast.LENGTH_LONG).show();
+            openPrivateDnsSettings();
+            return;
+        }
+        Toast.makeText(this, "Siki VPN/DNS korumasi hazirlaniyor", Toast.LENGTH_SHORT).show();
+        requestVpnPermission();
+    }
+
+    private void disableStrictDnsVpnProtection() {
+        ProtectionPolicyStore store = new ProtectionPolicyStore(this);
+        store.setFullVpnForwardingEnabled(false);
+        store.setDnsLeakProtection(false);
+        stopService(new Intent(this, DefenseVpnService.class));
+        Toast.makeText(this, "Uyumlu moda donuldu", Toast.LENGTH_SHORT).show();
         render();
     }
 

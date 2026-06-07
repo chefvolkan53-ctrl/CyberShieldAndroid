@@ -6,12 +6,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.VpnService;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class MainActivity extends Activity {
+    private static final int REQ_VPN = 501;
     private ModelCatalog catalog;
     private ThreatStore threatStore;
     private LinearLayout root;
@@ -70,6 +74,12 @@ public class MainActivity extends Activity {
         ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
         root.addView(card("Risk paneli", "Acik olay: " + openThreats + " | Algilama modeli: " + catalog.all().size() + " | Policy modeli: aktif | Pil profili: dengeli"));
         root.addView(card("DNS korumasi", policy.dnsLeakProtectionSummary() + " | Strict VPN: " + (policy.isStrictVpnRequired() ? "ACIK" : "KAPALI")));
+        SharedPreferences vpnStatus = getSharedPreferences("vpn_status", MODE_PRIVATE);
+        root.addView(card("VPN analiz motoru",
+                "Mod: " + vpnStatus.getString("mode", "not_started")
+                        + " | Proxy: " + vpnStatus.getLong("proxy_connections", 0L)
+                        + " | Mirror KB: " + (vpnStatus.getLong("proxy_mirrored_bytes", 0L) / 1024L)
+                        + " | Flow: " + vpnStatus.getLong("proxy_analyzed_flows", 0L)));
 
         Button start = button("Korumayi baslat", new View.OnClickListener() {
             @Override
@@ -83,9 +93,42 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 startService(new Intent(MainActivity.this, CyberDefenseService.class).setAction(CyberDefenseService.ACTION_STOP));
+                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
             }
         });
         root.addView(stop);
+
+        root.addView(button("Siki VPN/DNS korumasini ac", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                enableStrictDnsVpnProtection();
+            }
+        }));
+
+        root.addView(button("Siki korumayi kapat / uyumlu moda don", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                disableStrictDnsVpnProtection();
+            }
+        }));
+
+        root.addView(button("Uyumlu internet modu", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new ProtectionPolicyStore(MainActivity.this).setFullVpnForwardingEnabled(false);
+                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
+                render();
+            }
+        }));
+
+        root.addView(button("Tam VPN / DNS leak kilidi", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new ProtectionPolicyStore(MainActivity.this).setFullVpnForwardingEnabled(true);
+                stopService(new Intent(MainActivity.this, DefenseVpnService.class));
+                render();
+            }
+        }));
 
         root.addView(button("Izin ve VPN kurulumu", new View.OnClickListener() {
             @Override
@@ -152,6 +195,75 @@ public class MainActivity extends Activity {
         }
         if (checkSelfPermission(Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS}, 201);
+        }
+    }
+
+    private void enableStrictDnsVpnProtection() {
+        ProtectionPolicyStore store = new ProtectionPolicyStore(this);
+        store.setDnsLeakProtection(true);
+        store.setFullVpnForwardingEnabled(true);
+        store.setDnsProvider(ProtectionPolicyStore.DNS_CLOUDFLARE);
+        stopService(new Intent(this, DefenseVpnService.class));
+        if (isPrivateDnsActive()) {
+            Toast.makeText(this, "Android Private DNS'i kapatip geri don", Toast.LENGTH_LONG).show();
+            try {
+                startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS"));
+            } catch (Exception e) {
+                startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+            }
+            render();
+            return;
+        }
+        requestVpnPermission();
+    }
+
+    private void disableStrictDnsVpnProtection() {
+        ProtectionPolicyStore store = new ProtectionPolicyStore(this);
+        store.setFullVpnForwardingEnabled(false);
+        store.setDnsLeakProtection(false);
+        stopService(new Intent(this, DefenseVpnService.class));
+        Toast.makeText(this, "Uyumlu moda donuldu", Toast.LENGTH_SHORT).show();
+        render();
+    }
+
+    private void requestVpnPermission() {
+        Intent intent = VpnService.prepare(this);
+        if (intent != null) {
+            startActivityForResult(intent, REQ_VPN);
+        } else {
+            startDefenseVpn();
+        }
+    }
+
+    private void startDefenseVpn() {
+        try {
+            startService(new Intent(this, DefenseVpnService.class));
+            Toast.makeText(this, "VPN korumasi baslatildi", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "VPN baslatilamadi: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        }
+        render();
+    }
+
+    private boolean isPrivateDnsActive() {
+        try {
+            String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+            return mode != null && !"off".equalsIgnoreCase(mode) && !"opportunistic".equalsIgnoreCase(mode);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_VPN) {
+            if (resultCode == RESULT_OK) {
+                startDefenseVpn();
+            } else {
+                Toast.makeText(this, "VPN izni verilmedi", Toast.LENGTH_LONG).show();
+                render();
+            }
         }
     }
 

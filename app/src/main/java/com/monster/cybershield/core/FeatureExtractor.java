@@ -328,7 +328,7 @@ public final class FeatureExtractor {
             packet.payloadLength = Math.max(0, packet.totalLength - ihl);
         }
         packet.isDns = packet.protocol == 17 && (packet.sourcePort == 53 || packet.destinationPort == 53);
-        packet.isDohLike = packet.protocol == 6 && (packet.sourcePort == 443 || packet.destinationPort == 443);
+        packet.isDohLike = packet.protocol == 6 && (packet.sourcePort == 853 || packet.destinationPort == 853);
         if (packet.isDns) {
             int dnsOffset = ihl + 8;
             packet.queryName = parseDnsName(data, length, dnsOffset + 12);

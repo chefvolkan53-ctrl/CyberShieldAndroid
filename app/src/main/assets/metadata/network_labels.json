@@ -1,12 +1,13 @@
 {
-  "model_type": "TFLite network flow attack detector",
+  "model_type": "TFLite binary network anomaly attack detector",
+  "model_id": "network_attack",
+  "model_file": "network_anomaly_attack_detector.tflite",
   "input_name": "network_flow_features",
   "input_shape": [
     1,
     79
   ],
-  "input_dtype": "float32",
-  "feature_strategy": "Heuristic flow features; Flow ID, IP addresses, timestamp and label columns are excluded.",
+  "feature_strategy": "Packet CSV rows mapped to CyberShield 79 flow-compatible features. IP/timestamp identifiers excluded.",
   "feature_columns": [
     "Src Port",
     "Dst Port",
@@ -88,36 +89,282 @@
     "Idle Max",
     "Idle Min"
   ],
-  "excluded_columns": [
-    "Attack Name",
-    "Dst IP",
-    "Flow ID",
-    "Label",
-    "Src IP",
-    "Timestamp"
+  "scaler_mean": [
+    19840.590543020888,
+    17186.32609763305,
+    123.50841771862137,
+    11.399355926675943,
+    1.0,
+    0.0,
+    433.6116549505342,
+    0.0,
+    432.9682769585503,
+    432.9682769585503,
+    432.9682769585503,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    430638.38488666655,
+    974.7989231649848,
+    11.399355926675943,
+    0.0,
+    11.399355926675943,
+    11.399355926675943,
+    11.399355926675943,
+    11.399355926675943,
+    0.0,
+    11.399355926675943,
+    11.399355926675943,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    36.87025683926632,
+    0.0,
+    974.7989231649848,
+    0.0,
+    432.9682769585503,
+    432.9682769585503,
+    432.9682769585503,
+    0.0,
+    0.0,
+    0.00020602080185793306,
+    0.0,
+    0.0,
+    0.0,
+    7.07546188198962e-05,
+    0.0,
+    0.0,
+    0.05676393345736202,
+    0.0,
+    432.9682769585503,
+    380.0132311137193,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    433.6116549505342,
+    0.0,
+    0.0,
+    27687.870292216576,
+    0.0,
+    0.9824299633324594,
+    380.0132311137193,
+    11.399355926675943,
+    0.0,
+    11.399355926675943,
+    11.399355926675943,
+    0.0,
+    0.0,
+    0.0,
+    0.0
   ],
+  "scaler_scale": [
+    22224.160538329466,
+    21760.856179054535,
+    476.8769286346408,
+    160.48410267771717,
+    1.0,
+    1.0,
+    1469.2656844035007,
+    1.0,
+    1460.023892737427,
+    1460.023892737427,
+    1460.023892737427,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1469756.8531243496,
+    148.9077791681722,
+    160.48410267771717,
+    1.0,
+    160.48410267771717,
+    160.48410267771717,
+    160.48410267771717,
+    160.48410267771717,
+    1.0,
+    160.48410267771717,
+    160.48410267771717,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    5.268930221277022,
+    1.0,
+    148.9077791681722,
+    1.0,
+    1460.023892737427,
+    1460.023892737427,
+    1460.023892737427,
+    1.0,
+    1.0,
+    0.014351946114937413,
+    1.0,
+    1.0,
+    1.0,
+    0.008411278892310041,
+    1.0,
+    1.0,
+    0.23139098797579097,
+    1.0,
+    1460.023892737427,
+    1469.206506636647,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1.0,
+    1469.2656844035007,
+    1.0,
+    1.0,
+    1549401.5691554493,
+    1.0,
+    0.13138238268183908,
+    1469.206506636647,
+    160.48410267771717,
+    1.0,
+    160.48410267771717,
+    160.48410267771717,
+    1.0,
+    1.0,
+    1.0,
+    1.0
+  ],
+  "recommended_attack_threshold": 0.27969324588775635,
   "output": {
-    "name": "attack_type_probability",
+    "name": "attack_probability",
     "shape": [
       1,
-      6
-    ],
-    "labels": [
-      "Benign Traffic",
-      "DDoS ICMP Flood",
-      "MITM ARP Spoofing",
-      "MQTT DoS Connect Flood",
-      "MQTT Malformed",
-      "Recon OS Scan"
-    ],
-    "attack_probability": "1.0 - probability['Benign Traffic']"
+      1
+    ]
   },
-  "recommended_attack_threshold": 0.7231243848800659,
-  "intervention_guidance": {
-    "decision_rule": "attack_probability >= 0.723124384880 ise Android uygulamasinda uyarma, engelleme veya karantinaya alma karari verilebilir.",
-    "observe": 0.5,
-    "warn": 0.75,
-    "block_or_quarantine": 0.7231243848800659,
-    "note": "Model mudahale kararina skor verir; gercek engelleme/loglama Android uygulamasindaki VPN/firewall/policy koduyla yapilir."
-  }
+  "training_files": [
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Benign\\normal_data.csv",
+      "rows": 34754,
+      "label": 0
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\ARP-spoof\\MITM-ARP Spoofing.csv",
+      "rows": 35000,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\DDOS icmp\\DDOS ICMP.csv",
+      "rows": 34810,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\DDOS RAW\\DDOSRAW.csv",
+      "rows": 34969,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\DDOS-UDP\\3.csv",
+      "rows": 34831,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\DOS\\DOS_csvvvv.csv",
+      "rows": 35000,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\Exploiting FTP\\5.csv",
+      "rows": 34955,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\Exploiting FTP\\FTP_EXP1.csv",
+      "rows": 34831,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\FTP Brute Force\\10.csv",
+      "rows": 34935,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\Fuzzing\\Fuzzing.csv",
+      "rows": 35000,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\ICMP Flood\\ICMP-Flood.csv",
+      "rows": 34927,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\Port Scanning\\6.csv",
+      "rows": 34921,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\Remote Code Execution\\7.csv",
+      "rows": 34730,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\SQL injection\\SQL Injection.csv",
+      "rows": 271,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\SQL injection\\SQL-Injection2.csv",
+      "rows": 17868,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\SQL injection\\SQLinjection-UPDATED.csv",
+      "rows": 34927,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\SSH Brute Force\\12.csv",
+      "rows": 34895,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\syn flood\\SYN-Flood.csv",
+      "rows": 35000,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\XSS\\9.csv",
+      "rows": 2128,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\XSS\\XSS-1.csv",
+      "rows": 2318,
+      "label": 1
+    },
+    {
+      "file": "C:\\Users\\Monster\\Desktop\\anomali\\Dataset-Ready (Use This)\\Malicious\\XSS\\XSS-2.csv",
+      "rows": 35000,
+      "label": 1
+    }
+  ],
+  "note": "This replaces the older multiclass network detector with a binary alert-safe model. Runtime still depends on Android VPN flow feature quality."
 }

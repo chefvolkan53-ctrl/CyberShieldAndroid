@@ -25,8 +25,12 @@ public final class NativeVpnForwarder {
         if (!AVAILABLE) {
             return -1;
         }
-        TProxyStartService(configPath, tunFd);
-        return 0;
+        try {
+            TProxyStartService(configPath, tunFd);
+            return 0;
+        } catch (Throwable ignored) {
+            return -2;
+        }
     }
 
     public static void stop() {
@@ -39,7 +43,12 @@ public final class NativeVpnForwarder {
         if (!AVAILABLE) {
             return new long[]{0L, 0L, 0L, 0L};
         }
-        return TProxyGetStats();
+        try {
+            long[] stats = TProxyGetStats();
+            return stats == null ? new long[]{0L, 0L, 0L, 0L} : stats;
+        } catch (Throwable ignored) {
+            return new long[]{0L, 0L, 0L, 0L};
+        }
     }
 
     private static native void TProxyStartService(String configPath, int tunFd);
