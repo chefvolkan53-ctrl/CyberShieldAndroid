@@ -9,6 +9,7 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 | Domain | Kaynak tipi | Egitim yaklasimi | Android tarafindaki sinyal |
 | --- | --- | --- | --- |
 | Android malware | CSV/statik APK feature | 9503 feature ile binary/family tahmini | Manifest izinleri, component sayilari, app flag'leri, paket meta verisi |
+| Android malware flow | CIC-AndMal2017_raw flow CSV | 80 CICFlowMeter feature ile yuksek-yakalama destek modeli | VPN FlowTracker ag akisi |
 | Mirai | Mirai/Iot malware CSV | Manifest/behavior odakli siniflandirma | IoT/Mirai risk sinyali |
 | DNS | DNS stateful CSV | Binary attack/benign ayrimi | DNS query, port, uzunluk, entropy, domain seviyesi |
 | DoH L1 | DoH/non-DoH CSV | Ilk seviye DoH algilama | TCP/443 ve DoH benzeri flow sinyali |
@@ -25,6 +26,7 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 | ID | Accuracy | Recall | Esik | Karar rolu |
 | --- | ---: | ---: | ---: | --- |
 | android_malware | 0.9485 | 0.9707 | 0.5000 | Yararli/zararli APK karari |
+| android_malware_flow | 0.5208* | 0.9902* | 0.6000 | Android malware ag davranisi destek sinyali |
 | mirai | 0.9963 | 1.0000 | 0.7050 | Mirai/botnet uyarisi |
 | network_attack | 0.9585 | 0.9801 | 0.7231 | Flow bazli ag saldirisi |
 | dns_stateful | 0.8126 | 0.9936 | 0.5000 | DNS attack yakalama |
@@ -58,6 +60,7 @@ Bu model seti, Android cihaz uzerinde offline ve dusuk gecikmeli siber savunma y
 
 - Egitim skorlarinin tamamı veri seti icindeki test bolumlerinden gelir; gercek saha trafiginde dagilim farki olabilir.
 - Android malware 9503 feature seti Android cihazda manifest/meta veri ile yaklastirilir; tam statik APK disassembler baglanirsa kalite artar.
+- Android Malware Flow modeli 2.131 CSV'yi okuyarak egitildi; flow uyumlu 2.127 CSV egitime girdi. Drebin/MalDroid/Droidware statik/API CSV'leri rapora alindi fakat VPN flow feature uzayina karistirilmadi. Bu model tek basina kesin malware karari degil, yuksek recall destek sinyalidir.
 - Network/IoT feature uretimi flow istatistikleriyle guclendirildi; tam PCAP seviyesinde tum kolonlar icin daha fazla protokol ozelligi eklenebilir.
 - Wi-Fi Threat Detector egitim/test ayriminda cok yuksek skor verir; veri seti lab ortaminda etiketleri belirgin oldugu icin saha skorunu abartmamak gerekir.
 - Android normal uygulamalari ham 802.11 monitor-mode frame okuyamaz; Wi-Fi saldiri modeli sahada Android'in erisebildigi SSID/BSSID/RSSI/gateway/ARP/VPN-DNS belirtileriyle calisir.

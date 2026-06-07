@@ -4,7 +4,7 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 
 ## Bu ilk surumde hazir olanlar
 
-- 18 TFLite model `assets/models` altinda paketlenir.
+- 19 TFLite model `assets/models` altinda paketlenir.
 - `model_catalog.json` model esiklerini, giris boyutlarini ve mudahale politikasini tutar.
 - `CyberDefenseService` foreground servis olarak arka planda dusuk guc profilinde calisir.
 - Tehdit bildirimi, ilgili `InterventionActivity` ekranina dogrudan gider.
@@ -30,11 +30,12 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - `MitmArpMonitor`: Wi-Fi gateway MAC degisimi, ayni IP icin birden fazla MAC, ARP tablo dalgalanmasi, local-admin MAC ve broadcast/zero MAC gibi sinyalleri 32 feature olarak MITM/ARP TFLite modeline verir.
 - Wi-Fi MITM / ARP spoofing modulunde kural tabanli skor ile model riski birlestirilir; supheli Wi-Fi agini isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 - `WifiThreatMonitor`: SSID/BSSID, RSSI, guvenlik tipi, gateway MAC, `/proc/net/arp`, BSSID degisimi ve baglanti oynakligindan 48 feature uretir; ARP poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing ve SSL stripping veri setleriyle egitilen `wifi_threat_detector.tflite` modelini calistirir.
+- `android_malware_flow_detector.tflite`: CIC-AndMal2017_raw altindaki 2.131 CSV okunarak, flow uyumlu 2.127 CSV'den 900.000 dengeli ornekle egitilen Android malware ag davranisi destek modelidir.
 - `StealthPhisher2025`: 59 sayisal URL/HTML/sezgisel ozellikle modern phishing altyapilarini, IPFS/kisa link/Google Sites benzeri barindirma izlerini, form/parola sinyallerini ve entropy/obfuscation degerlerini analiz eder.
 - `FlowStats` ve `FeatureSchema`: network/IoT modelleri icin TCP flag, TTL, window, IAT, active/idle, forward/backward packet/byte ve payload/header istatistiklerini veri seti kolon adlarina daha birebir map eder.
 - APK feature cikarimi, PackageInfo sinyallerine ek olarak APK zip entry, dex, native lib, asset, sertifika ve sinirli statik string sinyallerini kullanir.
 - `ModelCalibrationStore` ve `CalibrationActivity`: lab/saha testinden sonra model esiklerini kalici olarak ayarlamak ve TP/FP/FN/TN sayaclarini tutmak icin eklendi.
-- Son beklenen cihaz self-test sonucu: 18/18 model OK.
+- Son beklenen cihaz self-test sonucu: 19/19 model OK.
 
 ## Android gercegi
 
@@ -55,6 +56,7 @@ Native motor yuklenemez veya baslatilamazsa uygulama telefonu internetsiz birakm
 - CyberShield Policy Assistant TFLite modeli uygulamaya eklendi.
 - Wi-Fi MITM / ARP Spoofing icin hibrit kural + TFLite savunma modulu eklendi.
 - Wi-Fi Threat Detector modeli eklendi; `C:\Users\Monster\Desktop\wifi` altindaki ARP Poison/flood, MachineLearningCVE, TrafficLabelling, Cap_1_10VM_1Apache ve WPA3 saldiri CSV'lerinden 916.777 ornekle egitildi.
+- Android Malware Flow modeli eklendi; `C:\Users\Monster\Desktop\Kötü Amaçlı Yazılım (Mirai)\CIC-AndMal2017_raw` altindaki tum CSV'ler okundu, flow uyumlu CIC-AndMal2017 dosyalari egitimde kullanildi ve statik Drebin/MalDroid/Droidware dosyalari rapora alindi.
 - StealthPhisher2025 URL/HTML heuristic TFLite modeli uygulamaya eklendi.
 - Network/IoT feature cikarimi CICFlowMeter tarzina daha yakin hale getirildi.
 - Android APK feature cikarimi zip/dex/native lib/string sinyalleriyle guclendirildi.

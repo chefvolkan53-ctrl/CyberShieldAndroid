@@ -53,6 +53,9 @@ public final class PolicyAssistantText {
             }
             return "Bu Wi-Fi agi supheli gorunuyor; hassas islemleri erteleyip CyberShield VPN korumasiyla devam etmeni oneriyorum.";
         }
+        if ("android_malware_flow".equals(event.modelId)) {
+            return target + " Android malware ag davranisi modelinde riskli gorundu; bunu tek basina kesin karar degil, network/APK/DNS sinyallerini destekleyen yuksek yakalama sinyali olarak kullaniyorum.";
+        }
         if ("temporary_block".equals(action)) {
             return target + " icin kalici karar vermeden once 1 saatlik gecici engel oneriyorum.";
         }
@@ -89,6 +92,9 @@ public final class PolicyAssistantText {
         }
         if ("mitm_arp".equals(event.modelId)) {
             return "Gateway/ARP kural motoru ve MITM risk modeli " + source + " kaynaginda " + percent + " risk hesapladı; bu sinyal gateway MAC degisimi, ARP tablo oynakligi veya ayni kimligin birden fazla hedefle gorunmesi gibi belirtilerden uretilir.";
+        }
+        if ("android_malware_flow".equals(event.modelId)) {
+            return "Android malware flow modeli " + source + " kaynaginda " + percent + " risk hesapladi; CIC-AndMal2017 Android benign/adware/ransomware/scareware/SMS malware ag akislarindan egitilen 80 flow ozelligi kullanildi.";
         }
         if (event.probability >= 0.85) {
             return model + " modeli " + source + " kaynaginda cok yuksek risk (" + percent + ") verdi.";

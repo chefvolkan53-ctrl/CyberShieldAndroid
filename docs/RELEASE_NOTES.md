@@ -21,11 +21,12 @@
 - `wifi_threat_detector.tflite` eklendi; ARP Poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing, SSL stripping ve CIC/CAP ag CSV'lerinden 916.777 ornekle egitildi.
 - `WifiThreatMonitor` eklendi; SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi ve Wi-Fi izinli Android sinyallerinden 48 feature uretir.
 - Telefon-ustu mudahale guclendirildi: supheli Wi-Fi strict VPN modu, otomatik VPN baslatma, DNS sorgu adi bloklama, URL-domain normalizasyonu ve HTTP downgrade engelleme eklendi.
+- `android_malware_flow_detector.tflite` eklendi; CIC-AndMal2017_raw altindaki 2.131 CSV okundu, flow uyumlu 2.127 CSV'den 900.000 dengeli ornekle Android malware ag davranisi destek modeli egitildi.
 
 ### Dogrulama
 
 - Samsung Galaxy A56 uzerinde release APK kuruldu.
-- Beklenen TFLite self-test sonucu: 18/18 model OK.
+- Beklenen TFLite self-test sonucu: 19/19 model OK.
 - SMS ve bildirim izinleri granted.
 - Link scanner uyarisi bildirim ve mudahale aksiyonlariyla dogrulandi.
 - Galaxy A56 saha testinde `Native VPN forwarding kutuphanesi: true` ve `VPN modu: full_device_forwarding` dogrulandi.

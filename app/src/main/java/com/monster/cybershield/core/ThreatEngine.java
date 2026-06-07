@@ -19,6 +19,7 @@ public final class ThreatEngine {
     private final FeatureSchema dohL1Schema;
     private final FeatureSchema dohL2Schema;
     private final FeatureSchema networkSchema;
+    private final FeatureSchema androidMalwareFlowSchema;
     private final FeatureSchema iotSchema;
     private final FeatureSchema pqcSchema;
     private final FeatureSchema socialUrlSchema;
@@ -32,6 +33,7 @@ public final class ThreatEngine {
         this.dohL1Schema = FeatureSchema.load(context, "doh_l1_feature_metadata.json", 29);
         this.dohL2Schema = FeatureSchema.load(context, "doh_l2_feature_metadata.json", 29);
         this.networkSchema = FeatureSchema.load(context, "network_labels.json", 79);
+        this.androidMalwareFlowSchema = FeatureSchema.load(context, "android_malware_flow_feature_metadata.json", 80);
         this.iotSchema = FeatureSchema.load(context, "iot_labels.json", 71);
         this.pqcSchema = FeatureSchema.load(context, "post_quantum_binary_labels.json", 32);
         this.socialUrlSchema = FeatureSchema.load(context, "social_url_metadata.json", 48);
@@ -102,6 +104,7 @@ public final class ThreatEngine {
         }
         String target = flow.target();
         analyze("network_attack", networkSchema.flow(flow, 79), "vpn_flow", target, "Ag saldirisi riski");
+        analyze("android_malware_flow", androidMalwareFlowSchema.flow(flow, 80), "vpn_android_flow", target, "Android malware ag davranisi riski");
         analyze("iot_attack", iotSchema.flow(flow, 71), "vpn_iot", target, "IoT/IIoT saldirisi riski");
         if (flow.dohPackets > 0 || flow.key.destinationPort == 443 || flow.key.sourcePort == 443) {
             analyze("attack_anomaly", pqcSchema.pqc(target, 32), "vpn_tls", target, "TLS/session anomali riski");
@@ -146,6 +149,9 @@ public final class ThreatEngine {
         }
         if ("dns_stateful".equals(spec.id) && probability >= 0.70f) {
             return new PolicyDecision("block_domain", 1.0f);
+        }
+        if ("android_malware_flow".equals(spec.id) && probability >= 0.78f) {
+            return new PolicyDecision("block_flow", 1.0f);
         }
         if (("network_attack".equals(spec.id) || "iot_attack".equals(spec.id) || "doh_l2".equals(spec.id)
                 || "post_quantum".equals(spec.id)) && probability >= 0.75f) {

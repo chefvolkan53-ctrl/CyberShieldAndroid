@@ -4,7 +4,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 ## Temel yetenekler
 
-- 18 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
+- 19 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
 - Foreground servis ile arka planda otomatik savunma calisir.
 - Bildirimler dogrudan ilgili mudahale ekranina gider.
 - Mudahale secenekleri: uyar, engelle, 1 saat gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina yonlendir.
@@ -24,6 +24,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | Model | Girdi | Dogruluk | Recall | Savunma etkisi |
 | --- | ---: | ---: | ---: | --- |
 | Android Malware | 9503 | 94.85% | 97.07% | APK kurulum/degisimlerinde zararli yazilim riskini hesaplar; karantina ve kaldirma akisini tetikler. |
+| Android Malware Flow | 80 | 52.08%* | 99.02%* | CIC-AndMal2017 Android ag akislarindan yuksek-yakalama destek sinyali uretir; tek basina yikici karar vermez. |
 | Mirai Malware | 64 | 99.63% | 100.00% | Mirai benzeri IoT zararlilarini ve botnet davranislarini ayirt eder. |
 | Network Attack | 79 | 95.85% | 98.01% | VPN flow istatistiklerinden ag saldirisi riskini uretir. |
 | DNS Attack | 27 | 81.26% | 99.36% | DNS trafiginde saldiri yakalamayi onceliklendirir; yuksek recall nedeniyle uyari/blok politikasi icin uygundur. |
@@ -44,6 +45,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 > Skorlar egitim/test veri setleri uzerinden olculmustur. Gercek saha trafiginde esik kalibrasyonu, loglama ve false-positive takibi gereklidir.
 > MITM/ARP modeli su anda sentetik/heuristic bootstrap veri setiyle egitildi; gercek lab ARP spoofing yakalamalariyla yeniden kalibre edilmesi onerilir.
+> Android Malware Flow modeli tum CIC-AndMal2017_raw CSV'lerini okuyarak egitildi; flow uyumlu 2.127 CSV egitime girdi, Drebin/MalDroid/Droidware statik dosyalari rapora alindi ancak VPN flow modeline karistirilmadi. Bu model yuksek recall destek sinyalidir; saha esigi 0.60 olarak baslatilir.
 > Wi-Fi Threat Detector skoru veri seti icinde cok yuksektir; Android normal uygulamalari ham 802.11 monitor-mode frame okuyamadigi icin model Android'de SSID/BSSID/RSSI/gateway/ARP/VPN-DNS ipuclariyla uygulanir ve saha esigi 0.65 olarak baslatilir.
 > StealthPhisher2025 modelinde ham `URL`, `Domain`, `TLD` stringleri ve dis skor gibi duran `WAPLegitimate/WAPPhishing` alanlari ezberleme/sizinti riskine karsi modele alinmadi; bunlar yerine 59 uretilebilir sayisal ozellik kullanildi.
 
@@ -65,7 +67,8 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 9. Flow feature cikarimi, network ve IoT metadata kolon adlarina gore daha birebir map edilecek sekilde genisletildi.
 10. APK statik feature cikarimi, Android PackageInfo disinda APK zip/dex/string sinyallerini de kullanacak sekilde genisletildi.
 11. Wi-Fi veri setlerinden 916.777 ornekle 48 feature'li `wifi_threat_detector.tflite` egitildi ve uygulamaya baglandi.
-12. Telefonda self-test ile 18/18 modelin yuklendigi ve inference calistirdigi dogrulanmalidir.
+12. CIC-AndMal2017_raw altindaki 2.131 CSV okunarak 80 feature'li `android_malware_flow_detector.tflite` egitildi; yuksek recall destek sinyali olarak VPN flow hattina baglandi.
+13. Telefonda self-test ile 19/19 modelin yuklendigi ve inference calistirdigi dogrulanmalidir.
 
 ## Savunma mimarisi
 
@@ -83,6 +86,7 @@ flowchart LR
     Flow --> Engine
     ARP[MITM/ARP Monitor] --> Engine
     WIFI[Wi-Fi Threat Monitor] --> Engine
+    AndroidFlow[Android Malware Flow] --> Engine
     Engine --> TFLite[TFLite Models]
     TFLite --> Assistant[Policy Assistant Model]
     Assistant --> Policy[Policy Engine]
@@ -98,6 +102,7 @@ flowchart LR
 - Domain/IP/port hedefleri blok/whitelist politikasina yazilir.
 - Bildirimdeki aksiyonlar olay detayina dogrudan gider.
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
+- Android Malware Flow modeli ayni VPN flow istatistiklerinden Android zararlı uygulama ag davranisi icin destek risk skoru uretir.
 - Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari yerel SOCKS koprusunde dusurulur.
 - Supheli Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; guvenli liste bu karari geri alabilir.
 - MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
@@ -110,7 +115,7 @@ flowchart LR
 - Target SDK: 35
 - TFLite runtime: `org.tensorflow:tensorflow-lite:2.17.0`
 - Test cihaz: Samsung Galaxy A56 (`SM_A566B`)
-- Son beklenen self-test: 18 model OK
+- Son beklenen self-test: 19 model OK
 - Launcher/adaptive icon eklendi.
 
 ## VPN ve Uretim Notu

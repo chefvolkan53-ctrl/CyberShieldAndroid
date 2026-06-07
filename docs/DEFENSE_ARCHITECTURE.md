@@ -19,8 +19,8 @@ Oncelikler:
 | SMS | `SmsThreatReceiver` | Social text, URL, phishing |
 | Paylasilan link/metin | `LinkScanActivity` | Social URL, social text, phishing |
 | APK kurulumu/degisimi | `PackageThreatReceiver` | Android malware |
-| VPN paketleri | `DefenseVpnService` + native forwarder | DNS, DoH L1/L2, Network, IoT, TLS/PQC |
-| Flow istatistikleri | `FlowTracker` | Network 79, IoT 71, anomaly/PQC |
+| VPN paketleri | `DefenseVpnService` + native forwarder | DNS, DoH L1/L2, Network, Android malware flow, IoT, TLS/PQC |
+| Flow istatistikleri | `FlowTracker` | Network 79, Android malware flow 80, IoT 71, anomaly/PQC |
 | Wi-Fi baglam sinyalleri | `WifiThreatMonitor` | Wi-Fi Threat 48, MITM/ARP 32 |
 
 ## Karar akisi
@@ -69,7 +69,9 @@ flowchart TD
     Protect --> Internet["Wi-Fi / mobile internet"]
     AndroidVpn --> Parser["Packet parser / FlowTracker"]
     Parser --> Models["TFLite DNS / DoH / Network / IoT / TLS models"]
+    Parser --> AndroidFlow["Android Malware Flow model"]
     Wifi["WifiThreatMonitor"] --> Models
+    AndroidFlow --> Intervention
     Models --> Intervention["Notification + intervention screen"]
 ```
 

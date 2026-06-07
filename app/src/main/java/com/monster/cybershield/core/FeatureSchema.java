@@ -16,11 +16,13 @@ public final class FeatureSchema {
     private final List<String> columns;
     private final float[] mean;
     private final float[] scale;
+    private final boolean signedLog1p;
 
-    private FeatureSchema(List<String> columns, float[] mean, float[] scale) {
+    private FeatureSchema(List<String> columns, float[] mean, float[] scale, boolean signedLog1p) {
         this.columns = columns;
         this.mean = mean;
         this.scale = scale;
+        this.signedLog1p = signedLog1p;
     }
 
     public static FeatureSchema load(Context context, String assetName, int fallbackSize) {
@@ -36,13 +38,19 @@ public final class FeatureSchema {
             while (columns.size() < fallbackSize) {
                 columns.add("feature_" + columns.size());
             }
-            return new FeatureSchema(columns, readFloatArray(json.optJSONArray("scaler_mean"), fallbackSize), readFloatArray(json.optJSONArray("scaler_scale"), fallbackSize));
+            String transform = json.optString("transform", "");
+            return new FeatureSchema(
+                    columns,
+                    readFloatArray(json.optJSONArray("scaler_mean"), fallbackSize),
+                    readFloatArray(json.optJSONArray("scaler_scale"), fallbackSize),
+                    transform.toLowerCase(Locale.US).contains("signed_log1p")
+            );
         } catch (Exception e) {
             ArrayList<String> columns = new ArrayList<>();
             for (int i = 0; i < fallbackSize; i++) {
                 columns.add("feature_" + i);
             }
-            return new FeatureSchema(columns, null, null);
+            return new FeatureSchema(columns, null, null, false);
         }
     }
 
@@ -264,6 +272,11 @@ public final class FeatureSchema {
     }
 
     private float[] scale(float[] values) {
+        if (signedLog1p) {
+            for (int i = 0; i < values.length; i++) {
+                values[i] = (float) (Math.signum(values[i]) * Math.log1p(Math.abs(values[i])));
+            }
+        }
         if (mean == null || scale == null) {
             return values;
         }
