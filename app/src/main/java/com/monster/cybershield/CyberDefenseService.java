@@ -223,7 +223,7 @@ public class CyberDefenseService extends Service {
 
     private void clearOldAlertNotificationsOnce() {
         android.content.SharedPreferences prefs = getSharedPreferences("alert_noise_policy", MODE_PRIVATE);
-        int policyVersion = 8;
+        int policyVersion = 9;
         if (prefs.getInt("cleared_for_policy_version", 0) >= policyVersion) {
             return;
         }

@@ -60,7 +60,7 @@ public final class ProtectionPolicyStore {
     }
 
     public boolean shouldBlockCleartextHttp() {
-        return isStrictVpnRequired();
+        return isStrictVpnRequired() || isFullVpnForwardingEnabled() && isDnsLeakProtectionEnabled();
     }
 
     public void setFullVpnForwardingEnabled(boolean enabled) {

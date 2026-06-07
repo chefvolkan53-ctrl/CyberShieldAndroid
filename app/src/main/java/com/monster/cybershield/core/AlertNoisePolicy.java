@@ -48,6 +48,9 @@ public final class AlertNoisePolicy {
         if (isTrustedPlatformService(host, port) && isVpnSource(src)) {
             return true;
         }
+        if (isLinkPhishingModel(id) && isLinkSource(src) && isBenignTrustedLinkTarget(target, host, port)) {
+            return true;
+        }
         if ("dns_stateful".equals(id) && "vpn_dns_leak_guard".equals(src) && isPrivateLanHost(host) && port == 53) {
             return true;
         }
@@ -143,6 +146,40 @@ public final class AlertNoisePolicy {
             return true;
         }
         return hasRiskyTld(host) && (length >= 24 || digitRatio(host) > 0.12f || host.contains("-"));
+    }
+
+    public boolean shouldRaiseHighRiskLink(String target) {
+        String host = normalizedHost(target);
+        int port = normalizedPort(target);
+        if (host.isEmpty() || isBenignTrustedLinkTarget(target, host, port)) {
+            return false;
+        }
+        boolean suspiciousContext = hasSuspiciousUrlContext(target);
+        if (isIpLiteral(host) && suspiciousContext) {
+            return true;
+        }
+        String value = safe(target).toLowerCase(Locale.US);
+        if (value.startsWith("http://") && suspiciousContext) {
+            return true;
+        }
+        if (isRiskyPhishingInfrastructure(host) && suspiciousContext) {
+            return true;
+        }
+        if (hasRiskyTld(host) && (suspiciousContext || host.length() >= 24 || digitRatio(host) > 0.12f)) {
+            return true;
+        }
+        String[] labels = host.split("\\.");
+        for (String label : labels) {
+            if (label.length() >= 20 && looksRandom(label)) {
+                return true;
+            }
+        }
+        return host.contains("login")
+                || host.contains("verify")
+                || host.contains("secure")
+                || host.contains("account")
+                || host.contains("wallet")
+                || host.contains("bank");
     }
 
     public static int notificationIdFor(String target) {
@@ -353,6 +390,114 @@ public final class AlertNoisePolicy {
 
     private static boolean isStandardWebOrPushPort(int port) {
         return port <= 0 || port == 80 || port == 443 || port == 5222 || port == 5223 || port == 5228 || port == 5229 || port == 5230;
+    }
+
+    private static boolean isLinkPhishingModel(String modelId) {
+        return "social_url".equals(modelId)
+                || "phishing_html".equals(modelId)
+                || "stealth_phisher_2025".equals(modelId);
+    }
+
+    private static boolean isLinkSource(String source) {
+        return "link_intent".equals(source)
+                || "shared_text".equals(source)
+                || "browser_guard".equals(source)
+                || "sms_email_guard".equals(source);
+    }
+
+    private static boolean isBenignTrustedLinkTarget(String target, String host, int port) {
+        if (!(port <= 0 || port == 80 || port == 443)) {
+            return false;
+        }
+        if (!isTrustedRootLinkHost(host) && !isTrustedPlatformService(host, port)) {
+            return false;
+        }
+        return !hasSuspiciousUrlContext(target);
+    }
+
+    private static boolean isTrustedRootLinkHost(String host) {
+        return "google.com".equals(host)
+                || "play.google.com".equals(host)
+                || "g.co".equals(host)
+                || "youtube.com".equals(host)
+                || "youtu.be".equals(host)
+                || "samsung.com".equals(host)
+                || "galaxy.store".equals(host)
+                || "cloudflare.com".equals(host)
+                || "cloudflare-dns.com".equals(host)
+                || "quad9.net".equals(host)
+                || "whatsapp.com".equals(host)
+                || "whatsapp.net".equals(host);
+    }
+
+    private static boolean isRiskyPhishingInfrastructure(String host) {
+        return host.contains("duckdns")
+                || host.contains("ddns")
+                || host.contains("ipfs")
+                || host.endsWith(".workers.dev")
+                || host.endsWith(".pages.dev")
+                || host.endsWith(".web.app")
+                || host.endsWith(".firebaseapp.com")
+                || host.endsWith(".github.io")
+                || host.endsWith(".netlify.app")
+                || host.endsWith(".vercel.app")
+                || host.endsWith(".glitch.me")
+                || host.endsWith(".repl.co")
+                || host.endsWith(".ngrok.io")
+                || host.endsWith(".trycloudflare.com")
+                || host.equals("bit.ly")
+                || host.equals("tinyurl.com")
+                || host.equals("t.co")
+                || host.equals("goo.gl")
+                || host.equals("qrco.de")
+                || host.equals("cutt.ly")
+                || host.equals("is.gd")
+                || host.equals("s.id");
+    }
+
+    private static boolean isIpLiteral(String host) {
+        String[] parts = host.split("\\.");
+        if (parts.length != 4) {
+            return false;
+        }
+        for (String part : parts) {
+            if (!isInteger(part)) {
+                return false;
+            }
+            int value = Integer.parseInt(part);
+            if (value < 0 || value > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean hasSuspiciousUrlContext(String target) {
+        String value = safe(target).toLowerCase(Locale.US);
+        if (value.isEmpty()) {
+            return false;
+        }
+        String pathAndQuery = value;
+        if (value.startsWith("http://") || value.startsWith("https://")) {
+            try {
+                Uri uri = Uri.parse(value);
+                pathAndQuery = safe(uri.getPath()) + "?" + safe(uri.getQuery());
+            } catch (Exception ignored) {
+            }
+        }
+        return pathAndQuery.contains("login")
+                || pathAndQuery.contains("signin")
+                || pathAndQuery.contains("verify")
+                || pathAndQuery.contains("password")
+                || pathAndQuery.contains("passwd")
+                || pathAndQuery.contains("wallet")
+                || pathAndQuery.contains("bank")
+                || pathAndQuery.contains("otp")
+                || pathAndQuery.contains("token")
+                || pathAndQuery.contains("session")
+                || pathAndQuery.contains("forms/")
+                || pathAndQuery.contains("/form")
+                || pathAndQuery.contains("docs.google.com/forms");
     }
 
     private static boolean isEphemeralOrConsumerPort(int port) {

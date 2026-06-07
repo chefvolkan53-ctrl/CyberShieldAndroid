@@ -87,6 +87,9 @@ public final class ThreatEngine {
     }
 
     public void analyzeUrl(String url, String source) {
+        if (alertNoisePolicy.shouldRaiseHighRiskLink(url)) {
+            raise("social_url", "Supheli baglanti riski", source, url, "high", 0.88, "block_domain");
+        }
         analyze("social_url", socialUrlSchema.url(url, 48), source, url, "Supheli baglanti riski");
         analyze("phishing_html", FeatureExtractor.phishingHtml(url), source, url, "Phishing baglanti riski");
         analyze("stealth_phisher_2025", FeatureExtractor.stealthPhisher2025(url), source, url, "Stealth phishing riski");
@@ -220,6 +223,12 @@ public final class ThreatEngine {
             return probability >= threshold;
         } else if ("doh_l1".equals(spec.id)) {
             return false;
+        } else if ("social_text".equals(spec.id)) {
+            threshold = Math.max(threshold, 0.55);
+            return probability >= threshold;
+        } else if ("social_url".equals(spec.id) || "phishing_html".equals(spec.id) || "stealth_phisher_2025".equals(spec.id)) {
+            threshold = Math.max(threshold, 0.60);
+            return probability >= threshold;
         }
         return score.actionable || probability >= threshold;
     }

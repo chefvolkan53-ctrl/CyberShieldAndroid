@@ -4,12 +4,14 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.monster.cybershield.core.FeatureExtractor;
+import com.monster.cybershield.core.AlertNoisePolicy;
 import com.monster.cybershield.core.ThreatEngine;
 
 public class LinkScanActivity extends Activity {
@@ -18,6 +20,9 @@ public class LinkScanActivity extends Activity {
         super.onCreate(bundle);
         String input = extractInput(getIntent());
         render(input);
+        if (new AlertNoisePolicy(this).shouldRaiseHighRiskLink(input)) {
+            raiseHighRiskLink(input);
+        }
         new Thread(() -> {
             if (input.startsWith("http://") || input.startsWith("https://") || input.contains(".")) {
                 new ThreatEngine(this).analyzeUrl(input, "link_intent");
@@ -42,6 +47,23 @@ public class LinkScanActivity extends Activity {
             return url.isEmpty() ? text : url;
         }
         return "";
+    }
+
+    private void raiseHighRiskLink(String target) {
+        Intent intent = new Intent(this, CyberDefenseService.class);
+        intent.setAction(CyberDefenseService.ACTION_RAISE_THREAT);
+        intent.putExtra(CyberDefenseService.EXTRA_MODEL_ID, "social_url");
+        intent.putExtra(CyberDefenseService.EXTRA_TITLE, "Supheli baglanti riski");
+        intent.putExtra(CyberDefenseService.EXTRA_SOURCE, "link_intent");
+        intent.putExtra(CyberDefenseService.EXTRA_TARGET, target);
+        intent.putExtra(CyberDefenseService.EXTRA_SEVERITY, "high");
+        intent.putExtra(CyberDefenseService.EXTRA_PROBABILITY, 0.88);
+        intent.putExtra(CyberDefenseService.EXTRA_RECOMMENDED_ACTION, "block_domain");
+        if (Build.VERSION.SDK_INT >= 26) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
     }
 
     private void render(String input) {
