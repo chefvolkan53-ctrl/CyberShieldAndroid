@@ -46,11 +46,10 @@ public class SecurityUpdateActivity extends Activity {
         root.addView(text("Imzali tehdit veritabani, model ve metadata paketleri burada izlenir.", 14, MUTED, false));
         addSpace(12);
 
-        LinearLayout status = panel();
-        status.addView(text("Durum", 18, TEXT, true));
-        status.addView(text(store.summary(), 14, OK, false));
-        status.addView(text(store.updateDetails(), 14, TEXT, false));
-        root.addView(status);
+        root.addView(reportPanel("Tehdit veritabani guncellendi", store.summary(), store.updateDetails(), OK));
+        root.addView(reportPanel("Guncelleme kapsami", "Telefona indirilen aktif tehdit gostergeleri", store.updateCoverageDetails(), ACCENT));
+        root.addView(reportPanel("Koruma etkisi", "Bu veri hangi savunma modullerini besler", store.updateImpactDetails(), TEXT));
+        root.addView(reportPanel("Kaynaklar", "Feed otomasyonu tarafindan islenen guvenilir kaynaklar", store.updateSourcesDetails(), MUTED));
 
         root.addView(actionButton("Simdi kontrol et", OK, new View.OnClickListener() {
             @Override
@@ -78,6 +77,14 @@ public class SecurityUpdateActivity extends Activity {
         }));
 
         setContentView(scroll);
+    }
+
+    private LinearLayout reportPanel(String title, String subtitle, String body, int accent) {
+        LinearLayout status = panel();
+        status.addView(text(title, 18, TEXT, true));
+        status.addView(text(subtitle, 14, accent, false));
+        status.addView(text(body, 14, TEXT, false));
+        return status;
     }
 
     private TextView text(String value, int sp, int color, boolean bold) {

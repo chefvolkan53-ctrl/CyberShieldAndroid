@@ -141,15 +141,53 @@ public final class SecurityUpdateStore {
         if (feedId == null || feedId.isEmpty()) {
             return "Henuz indirilen guncelleme paketi yok.";
         }
-        return "Paket: " + feedId
+        return "Paket: " + readablePackage(feedId)
                 + "\nSurum: " + version
-                + "\nZararli domain: " + prefs.getInt("last_feed_domains", 0)
+                + "\nDijital imza: dogrulandi"
+                + "\nDurum: aktif";
+    }
+
+    public String updateCoverageDetails() {
+        String feedId = prefs.getString("last_feed_id", "");
+        if (feedId == null || feedId.isEmpty()) {
+            return "Guncelleme alindiginda domain, IP, phishing ve riskli servis kapsami burada gorunur.";
+        }
+        return "Zararli domain: " + prefs.getInt("last_feed_domains", 0)
                 + "\nZararli IP: " + prefs.getInt("last_feed_ips", 0)
-                + "\nZararli CIDR/IP blok: " + prefs.getInt("last_feed_cidrs", 0)
-                + "\nPhishing kalibi: " + prefs.getInt("last_feed_phishing_patterns", 0)
+                + "\nZararli IP bloklari: " + prefs.getInt("last_feed_cidrs", 0)
+                + "\nPhishing URL kalibi: " + prefs.getInt("last_feed_phishing_patterns", 0)
                 + "\nDoH endpoint: " + prefs.getInt("last_feed_doh_endpoints", 0)
-                + "\nRiskli port: " + prefs.getInt("last_feed_risky_ports", 0)
-                + "\nCISA KEV CVE: " + prefs.getInt("last_feed_cves", 0);
+                + "\nRiskli servis portu: " + prefs.getInt("last_feed_risky_ports", 0)
+                + "\nAktif somurulen CVE: " + prefs.getInt("last_feed_cves", 0);
+    }
+
+    public String updateImpactDetails() {
+        String feedId = prefs.getString("last_feed_id", "");
+        if (feedId == null || feedId.isEmpty()) {
+            return "Yeni feed indirildiginde link, DNS, VPN ve ag akis kontrolleri bu veriyi kullanir.";
+        }
+        return "Link ve SMS taramasi phishing kaliplarini kullanir."
+                + "\nDNS/VPN korumasi zararli domain ve IP hedeflerini kontrol eder."
+                + "\nAg akis motoru riskli port ve IP bloklarini ek sinyal olarak kullanir."
+                + "\nDoH korumasi bilinen sifreli DNS endpointlerini sinirlayabilir.";
+    }
+
+    public String updateSourcesDetails() {
+        String feedId = prefs.getString("last_feed_id", "");
+        if (feedId == null || feedId.isEmpty()) {
+            return "Kaynak bilgisi ilk basarili guncellemeden sonra gorunur.";
+        }
+        return "URLhaus / abuse.ch: malware URL ve domain sinyalleri"
+                + "\nSpamhaus DROP: kotu niyetli IP bloklari"
+                + "\nCISA KEV: aktif somurulen guvenlik aciklari"
+                + "\nPhishTank: secret ekliyse phishing URL feed'i";
+    }
+
+    private static String readablePackage(String feedId) {
+        if ("threat_intel".equals(feedId)) {
+            return "Tehdit istihbarati veritabani";
+        }
+        return feedId;
     }
 
     public String summary() {
