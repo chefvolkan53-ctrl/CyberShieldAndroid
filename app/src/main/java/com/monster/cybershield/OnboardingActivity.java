@@ -20,6 +20,7 @@ import android.widget.Toast;
 public class OnboardingActivity extends Activity {
     public static final String PREF = "onboarding";
     public static final String KEY_DONE = "done";
+    private static final int REQ_VPN = 401;
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -72,10 +73,21 @@ public class OnboardingActivity extends Activity {
     private void requestVpnPermission() {
         Intent intent = VpnService.prepare(this);
         if (intent != null) {
-            startActivity(intent);
+            Toast.makeText(this, "Android VPN onay ekranini aciyorum", Toast.LENGTH_SHORT).show();
+            startActivityForResult(intent, REQ_VPN);
         } else {
-            startService(new Intent(this, DefenseVpnService.class));
+            startDefenseVpn();
         }
+    }
+
+    private void startDefenseVpn() {
+        try {
+            startService(new Intent(this, DefenseVpnService.class));
+            Toast.makeText(this, "VPN korumasi baslatildi", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "VPN baslatilamadi: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        }
+        render();
     }
 
     private void openBatteryOptimization() {
@@ -105,6 +117,19 @@ public class OnboardingActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         render();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_VPN) {
+            if (resultCode == RESULT_OK) {
+                startDefenseVpn();
+            } else {
+                Toast.makeText(this, "VPN izni verilmedi", Toast.LENGTH_LONG).show();
+                render();
+            }
+        }
     }
 
     @Override

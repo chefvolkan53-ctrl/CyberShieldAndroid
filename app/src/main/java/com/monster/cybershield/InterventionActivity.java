@@ -30,6 +30,7 @@ public class InterventionActivity extends Activity {
     public static final String ACTION_QUARANTINE = "quarantine";
     public static final String ACTION_TEMPORARY_BLOCK = "temporary_block";
     public static final String ACTION_REMOVE = "remove";
+    private static final int REQ_VPN = 501;
 
     private ThreatEvent event;
     private ThreatStore store;
@@ -117,12 +118,7 @@ public class InterventionActivity extends Activity {
         root.addView(button("VPN engelleme iznini ac", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent vpnIntent = VpnService.prepare(InterventionActivity.this);
-                if (vpnIntent != null) {
-                    startActivity(vpnIntent);
-                } else {
-                    startService(new Intent(InterventionActivity.this, DefenseVpnService.class));
-                }
+                requestVpnPermission();
             }
         }));
 
@@ -181,6 +177,37 @@ public class InterventionActivity extends Activity {
                 })
                 .setNegativeButton("Vazgec", null)
                 .show();
+    }
+
+    private void requestVpnPermission() {
+        Intent vpnIntent = VpnService.prepare(this);
+        if (vpnIntent != null) {
+            Toast.makeText(this, "Android VPN onay ekranini aciyorum", Toast.LENGTH_SHORT).show();
+            startActivityForResult(vpnIntent, REQ_VPN);
+        } else {
+            startDefenseVpn();
+        }
+    }
+
+    private void startDefenseVpn() {
+        try {
+            startService(new Intent(this, DefenseVpnService.class));
+            Toast.makeText(this, "VPN korumasi baslatildi", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "VPN baslatilamadi: " + e.getClass().getSimpleName(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_VPN) {
+            if (resultCode == RESULT_OK) {
+                startDefenseVpn();
+            } else {
+                Toast.makeText(this, "VPN izni verilmedi", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private TextView text(String value, int sp, int color, boolean bold) {
