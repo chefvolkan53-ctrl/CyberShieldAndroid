@@ -14,10 +14,13 @@ public final class FlowTracker {
         FlowKey key = FlowKey.from(packet);
         FlowStats stats = flows.get(key);
         if (stats == null) {
+            stats = flows.get(FlowKey.reverse(packet));
+        }
+        if (stats == null) {
             stats = new FlowStats(key, nowMs);
             flows.put(key, stats);
         }
-        stats.add(packet, nowMs);
+        stats.add(packet, nowMs, stats.key.matchesForward(packet));
         prune(nowMs);
         return stats;
     }

@@ -12,6 +12,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import com.monster.cybershield.core.FeatureExtractor;
+import com.monster.cybershield.core.ModelCalibrationStore;
+import com.monster.cybershield.core.NativeVpnForwarder;
 import com.monster.cybershield.core.ThreatEngine;
 
 public class SourceFieldTestActivity extends Activity {
@@ -39,9 +41,12 @@ public class SourceFieldTestActivity extends Activity {
         builder.append("SMS READ: ").append(granted(Manifest.permission.READ_SMS)).append('\n');
         builder.append("Bildirim: ").append(android.os.Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)).append('\n');
         builder.append("VPN izin hazir: ").append(VpnService.prepare(this) == null).append('\n');
+        builder.append("Native VPN forwarding kutuphanesi: ").append(NativeVpnForwarder.isAvailable()).append('\n');
+        builder.append("VPN modu: ").append(getSharedPreferences("vpn_status", MODE_PRIVATE).getString("mode", "not_started")).append('\n');
         builder.append("SMS receiver: ").append(receiverAvailable(SmsThreatReceiver.class)).append('\n');
         builder.append("APK receiver: ").append(receiverAvailable(PackageThreatReceiver.class)).append('\n');
         builder.append("Link scanner: ").append(activityAvailable(LinkScanActivity.class)).append('\n');
+        builder.append("Kalibrasyon network_attack: ").append(new ModelCalibrationStore(this).summary("network_attack")).append('\n');
         builder.append("APK feature self size: ").append(FeatureExtractor.apk(this, getPackageName()).length).append('\n');
         builder.append("Not: Gercek SMS ve gercek APK kurulumu Android tarafinda sistem olayi ile dogrulanir; ADB korumali broadcast taklidi yapamaz.\n");
 

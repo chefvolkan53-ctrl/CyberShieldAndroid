@@ -27,6 +27,9 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - `MitmArpMonitor`: Wi-Fi gateway MAC degisimi, ayni IP icin birden fazla MAC, ARP tablo dalgalanmasi, local-admin MAC ve broadcast/zero MAC gibi sinyalleri 32 feature olarak MITM/ARP TFLite modeline verir.
 - Wi-Fi MITM / ARP spoofing modulunde kural tabanli skor ile model riski birlestirilir; supheli Wi-Fi agini isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 - `StealthPhisher2025`: 59 sayisal URL/HTML/sezgisel ozellikle modern phishing altyapilarini, IPFS/kisa link/Google Sites benzeri barindirma izlerini, form/parola sinyallerini ve entropy/obfuscation degerlerini analiz eder.
+- `FlowStats` ve `FeatureSchema`: network/IoT modelleri icin TCP flag, TTL, window, IAT, active/idle, forward/backward packet/byte ve payload/header istatistiklerini veri seti kolon adlarina daha birebir map eder.
+- APK feature cikarimi, PackageInfo sinyallerine ek olarak APK zip entry, dex, native lib, asset, sertifika ve sinirli statik string sinyallerini kullanir.
+- `ModelCalibrationStore` ve `CalibrationActivity`: lab/saha testinden sonra model esiklerini kalici olarak ayarlamak ve TP/FP/FN/TN sayaclarini tutmak icin eklendi.
 - Son cihaz self-test sonucu: 17/17 model OK.
 
 ## Android gercegi
@@ -39,7 +42,7 @@ Android, kullanici onayi olmadan baska uygulamalari silemez veya tum agi sessizc
 
 ## Uretim siniri
 
-Android'de tum TCP/UDP trafigini interneti bozmadan 0.0.0.0/0 VPN uzerinden gecirmek icin kullanici-uzayi TCP/IP forwarding veya native `tun2socks` katmani gerekir. Bu makinedeki Android SDK'da NDK klasoru yok; bu yuzden native forwarding kutuphanesi derlenemedi. Bu projede guvenli TUN okuma, DNS/DoH/parser, flow tabanli feature uretimi, model baglantisi ve politika uygulamasi hazirdir; tam NAT/forwarding icin NDK veya guvenilir prebuilt native forwarding katmani eklenmelidir.
+Android'de tum TCP/UDP trafigini interneti bozmadan 0.0.0.0/0 VPN uzerinden gecirmek icin kullanici-uzayi TCP/IP forwarding veya native `tun2socks` katmani gerekir. Projede `NativeVpnForwarder` koprusu hazirdir; `libcybershield_forwarder.so` paketlenirse tam rota acilir. Native kutuphane yoksa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarinda kalir.
 
 Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan once forwarding katmani tamamlanmalidir.
 
@@ -48,6 +51,10 @@ Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan on
 - CyberShield Policy Assistant TFLite modeli uygulamaya eklendi.
 - Wi-Fi MITM / ARP Spoofing icin hibrit kural + TFLite savunma modulu eklendi.
 - StealthPhisher2025 URL/HTML heuristic TFLite modeli uygulamaya eklendi.
+- Network/IoT feature cikarimi CICFlowMeter tarzina daha yakin hale getirildi.
+- Android APK feature cikarimi zip/dex/native lib/string sinyalleriyle guclendirildi.
+- Kalibrasyon aktivitesi ve kalici threshold store eklendi.
+- Native VPN forwarding koprusu eklendi; native kutuphane yoksa full-route yerine guvenli mod kullanilir.
 - TensorFlow Lite runtime `2.17.0` surumune cikarildi.
 - Bildirimlerde ham "uyar" gibi ifadeler yerine profesyonel mudahale aciklamasi, risk gerekcesi ve geri alma bilgisi kullanilir.
 - MITM/ARP model skorlari sentetik/heuristic bootstrap veri setinden gelir; gercek lab trafiyle yeniden kalibrasyon onerilir.

@@ -38,14 +38,18 @@ public final class PolicyInterventionModel implements AutoCloseable {
     }
 
     public PolicyDecision recommend(ModelCatalog catalog, ModelSpec spec, ThreatScore score, String source) {
+        return recommend(catalog, spec, score, source, spec.threshold);
+    }
+
+    public PolicyDecision recommend(ModelCatalog catalog, ModelSpec spec, ThreatScore score, String source, double decisionThreshold) {
         float probability = Math.max(score.risk, score.confidence);
         float[] raw = new float[]{
                 sourceId(source),
                 modelIndex(catalog, spec.id),
                 targetTypeId(spec.id),
                 probability,
-                (float) spec.threshold,
-                probability >= spec.threshold ? 1f : 0f,
+                (float) decisionThreshold,
+                probability >= decisionThreshold ? 1f : 0f,
                 (float) spec.accuracy,
                 (float) spec.recall,
                 requiresUserConfirmation(spec, probability) ? 1f : 0f,

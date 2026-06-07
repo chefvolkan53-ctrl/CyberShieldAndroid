@@ -21,6 +21,18 @@ public final class FlowKey {
         return new FlowKey(packet.sourceAddress, packet.destinationAddress, packet.sourcePort, packet.destinationPort, packet.protocol);
     }
 
+    public static FlowKey reverse(PacketInfo packet) {
+        return new FlowKey(packet.destinationAddress, packet.sourceAddress, packet.destinationPort, packet.sourcePort, packet.protocol);
+    }
+
+    public boolean matchesForward(PacketInfo packet) {
+        return sourcePort == packet.sourcePort
+                && destinationPort == packet.destinationPort
+                && protocol == packet.protocol
+                && sourceAddress.equals(safe(packet.sourceAddress))
+                && destinationAddress.equals(safe(packet.destinationAddress));
+    }
+
     public String target() {
         return destinationAddress + ":" + destinationPort;
     }

@@ -101,10 +101,128 @@ public final class FeatureSchema {
 
     private float valueForFlow(String column, FlowStats flow) {
         String c = column == null ? "" : column.toLowerCase(Locale.US);
+        String compact = c.replace("_", " ").replace("-", " ");
         if (c.contains("src") && c.contains("port")) return flow.key.sourcePort;
         if ((c.contains("dst") || c.contains("dest")) && c.contains("port")) return flow.key.destinationPort;
         if (c.contains("protocol") || c.equals("proto")) return flow.key.protocol;
         if (c.contains("duration") || c.contains("dur")) return flow.durationMs();
+        if (c.contains("total fwd packet") || c.contains("subflow fwd packets")) return flow.fwd.packetCount;
+        if (c.contains("total bwd") || c.contains("subflow bwd packets")) return flow.bwd.packetCount;
+        if (c.contains("total length of fwd") || c.contains("subflow fwd bytes")) return flow.fwd.byteCount;
+        if (c.contains("total length of bwd") || c.contains("subflow bwd bytes")) return flow.bwd.byteCount;
+        if (c.contains("fwd packet length max") || c.contains("network_packet-size_max") && compact.contains("src")) return flow.fwd.packetLength.max();
+        if (c.contains("fwd packet length min") || c.contains("network_packet-size_min") && compact.contains("src")) return flow.fwd.packetLength.min();
+        if (c.contains("fwd packet length mean") || c.contains("fwd segment size avg")) return flow.fwd.packetLength.mean();
+        if (c.contains("fwd packet length std")) return flow.fwd.packetLength.std();
+        if (c.contains("bwd packet length max") || compact.contains("packet size max") && compact.contains("dst")) return flow.bwd.packetLength.max();
+        if (c.contains("bwd packet length min") || compact.contains("packet size min") && compact.contains("dst")) return flow.bwd.packetLength.min();
+        if (c.contains("bwd packet length mean") || c.contains("bwd segment size avg")) return flow.bwd.packetLength.mean();
+        if (c.contains("bwd packet length std")) return flow.bwd.packetLength.std();
+        if (c.contains("flow bytes/s")) return flow.bytesPerSecond();
+        if (c.contains("flow packets/s")) return flow.packetsPerSecond();
+        if (c.contains("fwd packets/s")) return flow.fwd.packetsPerSecond(flow.durationMs());
+        if (c.contains("bwd packets/s")) return flow.bwd.packetsPerSecond(flow.durationMs());
+        if (c.contains("flow iat mean")) return flow.flowIatStats.mean();
+        if (c.contains("flow iat std")) return flow.flowIatStats.std();
+        if (c.contains("flow iat max")) return flow.flowIatStats.max();
+        if (c.contains("flow iat min")) return flow.flowIatStats.min();
+        if (c.contains("fwd iat total")) return (float) flow.fwdIatStats.sum;
+        if (c.contains("fwd iat mean")) return flow.fwdIatStats.mean();
+        if (c.contains("fwd iat std")) return flow.fwdIatStats.std();
+        if (c.contains("fwd iat max")) return flow.fwdIatStats.max();
+        if (c.contains("fwd iat min")) return flow.fwdIatStats.min();
+        if (c.contains("bwd iat total")) return (float) flow.bwdIatStats.sum;
+        if (c.contains("bwd iat mean")) return flow.bwdIatStats.mean();
+        if (c.contains("bwd iat std")) return flow.bwdIatStats.std();
+        if (c.contains("bwd iat max")) return flow.bwdIatStats.max();
+        if (c.contains("bwd iat min")) return flow.bwdIatStats.min();
+        if (c.contains("fwd psh")) return flow.fwdPshPackets;
+        if (c.contains("bwd psh")) return flow.bwdPshPackets;
+        if (c.contains("fwd urg")) return flow.fwdUrgPackets;
+        if (c.contains("bwd urg")) return flow.bwdUrgPackets;
+        if (c.contains("fwd header")) return flow.fwd.headerLength.sum == 0 ? flow.fwd.headerLength.mean() : (float) flow.fwd.headerLength.sum;
+        if (c.contains("bwd header")) return flow.bwd.headerLength.sum == 0 ? flow.bwd.headerLength.mean() : (float) flow.bwd.headerLength.sum;
+        if (c.contains("packet length variance")) {
+            float std = flow.packetLengthStats.std();
+            return std * std;
+        }
+        if (c.contains("packet length std") || compact.contains("packet size std")) return flow.packetLengthStats.std();
+        if (c.contains("packet length mean") || compact.contains("packet size avg")) return flow.packetLengthStats.mean();
+        if (c.contains("average packet size")) return flow.averagePacketBytes();
+        if (c.contains("min packet length") || c.contains("packet length min") || compact.contains("packet size min")) return flow.packetLengthStats.min();
+        if (c.contains("max packet length") || c.contains("packet length max") || compact.contains("packet size max")) return flow.packetLengthStats.max();
+        if (c.contains("fin flag") || compact.contains("tcp flags fin")) return flow.finPackets;
+        if (c.contains("syn flag") || compact.contains("tcp flags syn")) return flow.synPackets;
+        if (c.contains("rst flag") || compact.contains("tcp flags rst")) return flow.rstPackets;
+        if (c.contains("psh flag") || compact.contains("tcp flags psh")) return flow.pshPackets;
+        if (c.contains("ack flag") || compact.contains("tcp flags ack")) return flow.ackPackets;
+        if (c.contains("urg flag") || compact.contains("tcp flags urg")) return flow.urgPackets;
+        if (c.contains("cwr") || c.contains("cwe")) return flow.cwrPackets;
+        if (c.contains("ece")) return flow.ecePackets;
+        if (c.contains("down/up")) return flow.downUpRatio();
+        if (c.contains("init win") && c.contains("fwd")) return flow.fwd.windowSize.max();
+        if (c.contains("init win") && c.contains("bwd")) return flow.bwd.windowSize.max();
+        if (c.contains("act data")) return flow.fwdActDataPackets;
+        if (c.contains("seg size min")) return Math.min(flow.fwd.packetLength.min(), flow.bwd.packetLength.min());
+        if (c.contains("active mean")) return flow.activeStats.mean();
+        if (c.contains("active std")) return flow.activeStats.std();
+        if (c.contains("active max")) return flow.activeStats.max();
+        if (c.contains("active min")) return flow.activeStats.min();
+        if (c.contains("idle mean")) return flow.idleStats.mean();
+        if (c.contains("idle std")) return flow.idleStats.std();
+        if (c.contains("idle max")) return flow.idleStats.max();
+        if (c.contains("idle min")) return flow.idleStats.min();
+        if (compact.contains("fragmentation score")) return flow.packetCount == 0 ? 0 : flow.fragmentedPackets / (float) flow.packetCount;
+        if (compact.contains("fragmented packets")) return flow.fragmentedPackets;
+        if (compact.contains("header length avg")) return flow.headerLengthStats.mean();
+        if (compact.contains("header length max")) return flow.headerLengthStats.max();
+        if (compact.contains("header length min")) return flow.headerLengthStats.min();
+        if (compact.contains("header length std")) return flow.headerLengthStats.std();
+        if (compact.contains("interval packets")) return flow.packetsPerSecond();
+        if (compact.contains("ip flags avg")) return flow.ipFlagsStats.mean();
+        if (compact.contains("ip flags max")) return flow.ipFlagsStats.max();
+        if (compact.contains("ip flags min")) return flow.ipFlagsStats.min();
+        if (compact.contains("ip flags std")) return flow.ipFlagsStats.std();
+        if (compact.contains("ip length avg")) return flow.packetLengthStats.mean();
+        if (compact.contains("ip length max")) return flow.packetLengthStats.max();
+        if (compact.contains("ip length min")) return flow.packetLengthStats.min();
+        if (compact.contains("ip length std")) return flow.packetLengthStats.std();
+        if (compact.contains("ips all count")) return flow.allIpCount();
+        if (compact.contains("ips dst count")) return flow.dstIpCount();
+        if (compact.contains("ips src count")) return flow.srcIpCount();
+        if (compact.contains("macs")) return 0f;
+        if (compact.contains("mss avg")) return Math.max(0f, flow.packetLengthStats.mean() - flow.headerLengthStats.mean());
+        if (compact.contains("mss max")) return Math.max(0f, flow.packetLengthStats.max() - flow.headerLengthStats.mean());
+        if (compact.contains("mss min")) return Math.max(0f, flow.packetLengthStats.min() - flow.headerLengthStats.mean());
+        if (compact.contains("mss std")) return flow.packetLengthStats.std();
+        if (compact.contains("packets all count")) return flow.packetCount;
+        if (compact.contains("packets dst count")) return flow.bwd.packetCount;
+        if (compact.contains("packets src count")) return flow.fwd.packetCount;
+        if (compact.contains("payload length avg")) return combinedPayloadMean(flow);
+        if (compact.contains("payload length max")) return Math.max(flow.fwd.payloadLength.max(), flow.bwd.payloadLength.max());
+        if (compact.contains("payload length min")) return nonZeroMin(flow.fwd.payloadLength.min(), flow.bwd.payloadLength.min());
+        if (compact.contains("payload length std")) return Math.max(flow.fwd.payloadLength.std(), flow.bwd.payloadLength.std());
+        if (compact.contains("ports all count")) return flow.allPortCount();
+        if (compact.contains("ports dst count")) return flow.dstPortCount();
+        if (compact.contains("ports src count")) return flow.srcPortCount();
+        if (compact.contains("protocols")) return flow.protocolCount();
+        if (compact.contains("tcp flags avg")) return flow.packetCount == 0 ? 0 : (flow.synPackets + flow.ackPackets + flow.finPackets + flow.rstPackets + flow.pshPackets + flow.urgPackets) / (float) flow.packetCount;
+        if (compact.contains("tcp flags max")) return Math.max(flow.synPackets, Math.max(flow.ackPackets, Math.max(flow.finPackets, flow.rstPackets)));
+        if (compact.contains("tcp flags min")) return 0f;
+        if (compact.contains("tcp flags std")) return flow.packetLengthStats.std();
+        if (compact.contains("time delta avg")) return flow.flowIatStats.mean();
+        if (compact.contains("time delta max")) return flow.flowIatStats.max();
+        if (compact.contains("time delta min")) return flow.flowIatStats.min();
+        if (compact.contains("time delta std")) return flow.flowIatStats.std();
+        if (compact.contains("ttl avg")) return flow.ttlStats.mean();
+        if (compact.contains("ttl max")) return flow.ttlStats.max();
+        if (compact.contains("ttl min")) return flow.ttlStats.min();
+        if (compact.contains("ttl std")) return flow.ttlStats.std();
+        if (compact.contains("window size avg")) return flow.windowStats.mean();
+        if (compact.contains("window size max")) return flow.windowStats.max();
+        if (compact.contains("window size min")) return flow.windowStats.min();
+        if (compact.contains("window size std")) return flow.windowStats.std();
+        if (compact.contains("log")) return 0f;
         if (c.contains("packet") && (c.contains("count") || c.contains("cnt") || c.contains("tot"))) return flow.packetCount;
         if (c.contains("pkt") && (c.contains("count") || c.contains("cnt"))) return flow.packetCount;
         if (c.contains("byte") || c.contains("octet")) return flow.byteCount;
@@ -129,6 +247,20 @@ public final class FeatureSchema {
         if (c.contains("hyphen") || c.contains("dash")) return flow.lastQueryName.contains("-") ? 1 : 0;
         if (c.contains("entropy")) return entropy(flow.lastQueryName);
         return 0f;
+    }
+
+    private static float combinedPayloadMean(FlowStats flow) {
+        int count = flow.fwd.payloadLength.count + flow.bwd.payloadLength.count;
+        if (count == 0) {
+            return 0f;
+        }
+        return (float) ((flow.fwd.payloadLength.sum + flow.bwd.payloadLength.sum) / count);
+    }
+
+    private static float nonZeroMin(float a, float b) {
+        if (a == 0f) return b;
+        if (b == 0f) return a;
+        return Math.min(a, b);
     }
 
     private float[] scale(float[] values) {

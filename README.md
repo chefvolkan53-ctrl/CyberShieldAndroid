@@ -13,6 +13,9 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 - CyberShield Policy Assistant modeli, tespit edilen olaya gore profesyonel mudahale onerisi, gerekce, etki ve geri alma bilgisini uretir.
 - Model yukleme olay bazlidir; pil/performans icin ayni anda sicak tutulan model sayisi sinirlanir.
 - Blok liste, gecici blok, whitelist ve son karari geri alma politikasi vardir.
+- Network/IoT feature uretimi, yon bazli flow istatistikleri, TCP flag/window, TTL, IAT, active/idle ve payload/header sinyalleriyle CICFlowMeter tarzina yaklastirildi.
+- APK feature uretimi, kurulu APK zip yapisi, dex/native lib/asset/suspicious entry sayilari ve sinirli statik string sinyalleriyle genisletildi.
+- Model esikleri saha/lab testlerinden sonra `CalibrationActivity` ile kalici olarak kalibre edilebilir.
 
 ## Model envanteri
 
@@ -55,7 +58,9 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 6. Policy Assistant modeli, olay riskini kullaniciya uygulanabilir aksiyon diline ceviren ayri bir TFLite karar katmani olarak eklendi.
 7. MITM/ARP modeli, cihaz uzerindeki Wi-Fi gateway ve `/proc/net/arp` sinyallerinden 32 feature ureten hibrit monitor ile baglandi.
 8. StealthPhisher2025 modeli 336.749 satirlik dengeli phishing veri setiyle egitildi; esik `0.2478628457` olarak kalibre edildi.
-9. Telefonda self-test ile 17/17 modelin yuklendigi ve inference calistirdigi dogrulandi.
+9. Flow feature cikarimi, network ve IoT metadata kolon adlarina gore daha birebir map edilecek sekilde genisletildi.
+10. APK statik feature cikarimi, Android PackageInfo disinda APK zip/dex/string sinyallerini de kullanacak sekilde genisletildi.
+11. Telefonda self-test ile 17/17 modelin yuklendigi ve inference calistirdigi dogrulandi.
 
 ## Savunma mimarisi
 
@@ -95,9 +100,11 @@ flowchart LR
 - Son self-test: 17 model OK
 - Launcher/adaptive icon eklendi.
 
-## Uretim notu
+## VPN ve Uretim Notu
 
-Tam `0.0.0.0/0` internet forwarding icin native `tun2socks` veya esdeger kullanici-uzayi TCP/IP forwarding katmani gerekir. Mevcut projede TUN okuma, packet parser, flow feature uretimi, model baglantisi ve politika altyapisi hazirdir; tam NAT/forwarding native katmanla tamamlanmalidir.
+Tam `0.0.0.0/0` internet forwarding icin native `tun2socks` veya esdeger kullanici-uzayi TCP/IP forwarding katmani gerekir. Projede `NativeVpnForwarder` koprusu hazirdir: `libcybershield_forwarder.so` saglanirsa tam cihaz rotasi acilir; native kutuphane yoksa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarinda kalir.
+
+Mevcut projede TUN okuma, packet parser, flow feature uretimi, model baglantisi, blok/whitelist politikasi, kalibrasyon altyapisi ve native forwarder koprusu hazirdir. Tam uretim VPN modu icin guvenilir native forwarding kutuphanesi paketlenmelidir.
 
 ## Derleme
 

@@ -22,6 +22,7 @@ public final class ThreatEngine {
     private final FeatureSchema iotSchema;
     private final FeatureSchema pqcSchema;
     private final FeatureSchema socialUrlSchema;
+    private final ModelCalibrationStore calibrationStore;
     private final PolicyInterventionModel policyModel;
 
     public ThreatEngine(Context context) {
@@ -34,6 +35,7 @@ public final class ThreatEngine {
         this.iotSchema = FeatureSchema.load(context, "iot_labels.json", 71);
         this.pqcSchema = FeatureSchema.load(context, "post_quantum_binary_labels.json", 32);
         this.socialUrlSchema = FeatureSchema.load(context, "social_url_metadata.json", 48);
+        this.calibrationStore = new ModelCalibrationStore(context);
         PolicyInterventionModel loadedPolicy;
         try {
             loadedPolicy = new PolicyInterventionModel(context);
@@ -50,7 +52,7 @@ public final class ThreatEngine {
         }
         try (TfliteThreatModel model = new TfliteThreatModel(context, spec)) {
             ThreatScore score = model.run(features);
-            if (score.actionable || shouldTreatAsActionable(spec, score)) {
+            if (isActionable(spec, score)) {
                 float probability = Math.max(score.risk, score.confidence);
                 PolicyDecision decision = decide(spec, score, source);
                 raise(modelId, title, source, target, severity(probability), probability, decision.action);
@@ -110,7 +112,7 @@ public final class ThreatEngine {
     private PolicyDecision decide(ModelSpec spec, ThreatScore score, String source) {
         if (policyModel != null) {
             try {
-                return policyModel.recommend(catalog, spec, score, source);
+                return policyModel.recommend(catalog, spec, score, source, calibrationStore.threshold(spec.id, spec.threshold));
             } catch (Throwable ignored) {
             }
         }
@@ -141,11 +143,13 @@ public final class ThreatEngine {
         }
     }
 
-    private static boolean shouldTreatAsActionable(ModelSpec spec, ThreatScore score) {
-        if (spec.threshold <= 0.0) {
+    private boolean isActionable(ModelSpec spec, ThreatScore score) {
+        double threshold = calibrationStore.threshold(spec.id, spec.threshold);
+        if (threshold <= 0.0) {
             return false;
         }
-        return score.risk == 0f && score.confidence >= spec.threshold;
+        float probability = Math.max(score.risk, score.confidence);
+        return score.actionable || probability >= threshold;
     }
 
     private static String severity(float probability) {

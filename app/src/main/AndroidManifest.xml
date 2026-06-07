@@ -42,6 +42,10 @@
             android:exported="true" />
 
         <activity
+            android:name=".CalibrationActivity"
+            android:exported="true" />
+
+        <activity
             android:name=".LinkScanActivity"
             android:exported="true">
             <intent-filter>

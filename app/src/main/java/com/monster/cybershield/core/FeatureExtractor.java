@@ -9,7 +9,12 @@ import android.os.Build;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.io.File;
+import java.io.InputStream;
 import java.util.Locale;
+import java.util.Enumeration;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -213,7 +218,12 @@ public final class FeatureExtractor {
             features[17] = packageName.length();
             features[18] = countChar(packageName, '.');
             features[19] = digitCount(packageName);
+            features[20] = app.sourceDir == null ? 0 : new File(app.sourceDir).length() / 1024.0f;
+            features[21] = info.signatures == null ? 0 : info.signatures.length;
+            features[22] = info.versionCode;
+            features[23] = app.nativeLibraryDir == null ? 0 : new File(app.nativeLibraryDir).exists() ? 1 : 0;
             addPermissionFeatures(features, info.requestedPermissions);
+            addSourceApkFeatures(features, app.sourceDir);
             addComponentFeatures(features, info.activities, 3000);
             addComponentFeatures(features, info.services, 4600);
             addComponentFeatures(features, info.receivers, 6200);
@@ -293,6 +303,11 @@ public final class FeatureExtractor {
             return packet;
         }
         packet.totalLength = unsignedShort(data, 2);
+        packet.ipHeaderLength = ihl;
+        int flagsAndFragment = unsignedShort(data, 6);
+        packet.ipFlags = (flagsAndFragment >> 13) & 0x07;
+        packet.fragmentOffset = flagsAndFragment & 0x1FFF;
+        packet.ttl = data[8] & 0xFF;
         packet.protocol = data[9] & 0xFF;
         packet.sourceAddress = ipv4(data, 12);
         packet.destinationAddress = ipv4(data, 16);
@@ -302,9 +317,12 @@ public final class FeatureExtractor {
         }
         if (packet.protocol == 6 && length >= ihl + 20) {
             int tcpHeaderLength = ((data[ihl + 12] >> 4) & 0x0F) * 4;
-            packet.tcpFlags = data[ihl + 13] & 0x3F;
+            packet.transportHeaderLength = tcpHeaderLength;
+            packet.tcpFlags = data[ihl + 13] & 0xFF;
+            packet.tcpWindowSize = unsignedShort(data, ihl + 14);
             packet.payloadLength = Math.max(0, packet.totalLength - ihl - tcpHeaderLength);
         } else if (packet.protocol == 17 && length >= ihl + 8) {
+            packet.transportHeaderLength = 8;
             packet.payloadLength = Math.max(0, unsignedShort(data, ihl + 4) - 8);
         } else {
             packet.payloadLength = Math.max(0, packet.totalLength - ihl);
@@ -393,6 +411,94 @@ public final class FeatureExtractor {
         for (String permission : permissions) {
             int index = 256 + Math.abs(permission.hashCode()) % 2600;
             features[index] = 1.0f;
+        }
+    }
+
+    private static void addSourceApkFeatures(float[] features, String sourceDir) {
+        if (sourceDir == null || sourceDir.isEmpty()) {
+            return;
+        }
+        File apkFile = new File(sourceDir);
+        if (!apkFile.isFile()) {
+            return;
+        }
+        int dexCount = 0;
+        int nativeLibCount = 0;
+        int assetCount = 0;
+        int resCount = 0;
+        int certCount = 0;
+        int entryCount = 0;
+        int suspiciousNameCount = 0;
+        long compressedBytes = 0;
+        long uncompressedBytes = 0;
+        try (ZipFile zip = new ZipFile(apkFile)) {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                entryCount++;
+                String name = entry.getName().toLowerCase(Locale.US);
+                compressedBytes += Math.max(0L, entry.getCompressedSize());
+                uncompressedBytes += Math.max(0L, entry.getSize());
+                if (name.endsWith(".dex")) dexCount++;
+                if (name.startsWith("lib/") && name.endsWith(".so")) nativeLibCount++;
+                if (name.startsWith("assets/")) assetCount++;
+                if (name.startsWith("res/")) resCount++;
+                if (name.startsWith("meta-inf/") && (name.endsWith(".rsa") || name.endsWith(".dsa") || name.endsWith(".ec"))) certCount++;
+                if (containsAny(name, "frida", "xposed", "substrate", "payload", "dropper", "sms", "bank", "crypto", "keylog", "root", "su") == 1) {
+                    suspiciousNameCount++;
+                }
+                int index = 900 + Math.abs(name.hashCode()) % 1800;
+                features[index] = 1.0f;
+                if (entry.getSize() > 0) {
+                    features[2700 + Math.abs((name + "|" + entry.getSize()).hashCode()) % 300] += 1.0f;
+                }
+            }
+            features[40] = entryCount;
+            features[41] = dexCount;
+            features[42] = nativeLibCount;
+            features[43] = assetCount;
+            features[44] = resCount;
+            features[45] = certCount;
+            features[46] = suspiciousNameCount;
+            features[47] = compressedBytes / 1024.0f;
+            features[48] = uncompressedBytes / 1024.0f;
+            features[49] = compressedBytes <= 0 ? 0 : (float) uncompressedBytes / Math.max(1L, compressedBytes);
+            addDexStringSignals(features, zip);
+        } catch (Exception ignored) {
+            fillHash(features, apkFile.getAbsolutePath() + "|" + apkFile.length(), 900, 1200);
+        }
+    }
+
+    private static void addDexStringSignals(float[] features, ZipFile zip) {
+        int scannedBytes = 0;
+        byte[] buffer = new byte[4096];
+        try {
+            Enumeration<? extends ZipEntry> entries = zip.entries();
+            while (entries.hasMoreElements() && scannedBytes < 512 * 1024) {
+                ZipEntry entry = entries.nextElement();
+                String name = entry.getName().toLowerCase(Locale.US);
+                if (!name.endsWith(".dex") && !name.endsWith(".xml") && !name.endsWith(".json") && !name.endsWith(".txt")) {
+                    continue;
+                }
+                try (InputStream input = zip.getInputStream(entry)) {
+                    int read;
+                    while ((read = input.read(buffer)) != -1 && scannedBytes < 512 * 1024) {
+                        scannedBytes += read;
+                        String chunk = new String(buffer, 0, read, StandardCharsets.ISO_8859_1).toLowerCase(Locale.US);
+                        if (containsAny(chunk, "sendtextmessage", "telephonymanager", "deviceadminreceiver", "accessibilityservice") == 1) features[50] = 1;
+                        if (containsAny(chunk, "dexclassloader", "pathclassloader", "loadlibrary", "runtime.exec", "processbuilder") == 1) features[51] = 1;
+                        if (containsAny(chunk, "getexternalstorage", "read_sms", "receive_sms", "contactscontract") == 1) features[52] = 1;
+                        if (containsAny(chunk, "http://", "socket", "urlconnection", "okhttp", "retrofit") == 1) features[53] = 1;
+                        if (containsAny(chunk, "su", "/system/bin/sh", "/system/xbin", "magisk", "busybox") == 1) features[54] = 1;
+                        if (containsAny(chunk, "bitcoin", "wallet", "seed", "mnemonic", "metamask") == 1) features[55] = 1;
+                        if (containsAny(chunk, "bank", "iban", "card", "otp", "password") == 1) features[56] = 1;
+                        features[1200 + Math.abs(chunk.hashCode()) % 1400] += 0.1f;
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            features[57] = scannedBytes / 1024.0f;
+        } catch (Exception ignored) {
         }
     }
 
