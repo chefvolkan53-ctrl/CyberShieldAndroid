@@ -81,6 +81,11 @@ public final class SecurityUpdateManager {
                 notifyUpdated(status);
             }
             return new Result(true, status, "");
+        } catch (HttpStatusException e) {
+            if (e.code == 404) {
+                return finish(true, "uzak manifest yayinda degil; yerlesik koruma aktif", "");
+            }
+            return finish(false, "guncelleme sunucusuna erisilemedi", "http " + e.code);
         } catch (Exception e) {
             return finish(false, "guncelleme reddedildi", e.getClass().getSimpleName() + ": " + safe(e.getMessage()));
         }
@@ -258,7 +263,7 @@ public final class SecurityUpdateManager {
         connection.setInstanceFollowRedirects(false);
         int code = connection.getResponseCode();
         if (code < 200 || code >= 300) {
-            throw new IllegalStateException("http " + code);
+            throw new HttpStatusException(code);
         }
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192];
@@ -358,6 +363,15 @@ public final class SecurityUpdateManager {
             this.success = success;
             this.status = status == null ? "" : status.toLowerCase(Locale.US);
             this.error = error == null ? "" : error;
+        }
+    }
+
+    private static final class HttpStatusException extends Exception {
+        final int code;
+
+        HttpStatusException(int code) {
+            super("http " + code);
+            this.code = code;
         }
     }
 }
