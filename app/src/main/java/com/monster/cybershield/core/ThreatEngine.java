@@ -27,6 +27,7 @@ public final class ThreatEngine {
     private final ModelCalibrationStore calibrationStore;
     private final PolicyInterventionModel policyModel;
     private final AlertNoisePolicy alertNoisePolicy;
+    private final ThreatIntelStore threatIntelStore;
 
     public ThreatEngine(Context context) {
         this.context = context.getApplicationContext();
@@ -42,6 +43,7 @@ public final class ThreatEngine {
         this.socialUrlSchema = FeatureSchema.load(context, "social_url_metadata.json", 48);
         this.calibrationStore = new ModelCalibrationStore(context);
         this.alertNoisePolicy = new AlertNoisePolicy(context);
+        this.threatIntelStore = new ThreatIntelStore(context);
         PolicyInterventionModel loadedPolicy;
         try {
             loadedPolicy = new PolicyInterventionModel(context);
@@ -87,6 +89,10 @@ public final class ThreatEngine {
     }
 
     public void analyzeUrl(String url, String source) {
+        if (threatIntelStore.isKnownPhishingUrl(url)) {
+            raise("social_url", "Guncel tehdit istihbarati eslesmesi", source, url, "critical", 0.96, "block_domain");
+            return;
+        }
         if (alertNoisePolicy.shouldRaiseHighRiskLink(url)) {
             raise("social_url", "Supheli baglanti riski", source, url, "high", 0.88, "block_domain");
         }
@@ -104,13 +110,15 @@ public final class ThreatEngine {
             return;
         }
         if (packet.isDns) {
-            if (alertNoisePolicy.isSuspiciousDnsQuery(packet.target())) {
+            if (threatIntelStore.isKnownMaliciousTarget(packet.target())) {
+                raise("dns_stateful", "Zararli domain istihbarati", "vpn_dns", packet.target(), "critical", 0.97, "block_domain");
+            } else if (alertNoisePolicy.isSuspiciousDnsQuery(packet.target())) {
                 analyze("dns_stateful", dnsSchema.packet(packet, 27), "vpn_dns", packet.target(), "DNS saldiri riski");
             } else {
                 scoreOnly("dns_stateful", dnsSchema.packet(packet, 27));
             }
         }
-        if (packet.isDohLike && alertNoisePolicy.isLikelyEncryptedDnsTarget(packet.target())) {
+        if (packet.isDohLike && (alertNoisePolicy.isLikelyEncryptedDnsTarget(packet.target()) || threatIntelStore.isKnownDohEndpoint(packet.target()))) {
             ThreatScore l1 = scoreOnly("doh_l1", dohL1Schema.packet(packet, 29));
             if (l1 != null && (l1.actionable || l1.confidence >= 0.5f)
                     && !alertNoisePolicy.isTrustedNetworkTarget(packet.target())) {
@@ -124,7 +132,9 @@ public final class ThreatEngine {
             return;
         }
         String target = flow.target();
-        if (alertNoisePolicy.shouldScoreOnlyNetworkFlow(flow)) {
+        if (threatIntelStore.isKnownMaliciousTarget(target) || threatIntelStore.isRiskyPort(flow.key.destinationPort)) {
+            analyze("network_attack", networkSchema.flow(flow, 79), "vpn_flow", target, "Guncel ag tehdit riski");
+        } else if (alertNoisePolicy.shouldScoreOnlyNetworkFlow(flow)) {
             scoreOnly("network_attack", networkSchema.flow(flow, 79));
         } else {
             analyze("network_attack", networkSchema.flow(flow, 79), "vpn_flow", target, "Ag saldirisi riski");

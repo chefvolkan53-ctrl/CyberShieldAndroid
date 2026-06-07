@@ -2,10 +2,14 @@ package com.monster.cybershield.model;
 
 import android.content.Context;
 
+import com.monster.cybershield.core.SecurityUpdateStore;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -22,7 +26,7 @@ public final class ModelCatalog {
     public static ModelCatalog load(Context context) {
         ArrayList<ModelSpec> specs = new ArrayList<>();
         try {
-            String text = readAsset(context, "model_catalog.json");
+            String text = readCatalog(context);
             JSONObject root = new JSONObject(text);
             JSONArray array = root.getJSONArray("models");
             for (int i = 0; i < array.length(); i++) {
@@ -45,6 +49,29 @@ public final class ModelCatalog {
             }
         }
         return null;
+    }
+
+    private static String readCatalog(Context context) throws Exception {
+        File activeCatalog = new SecurityUpdateStore(context).activeCatalogIfPresent();
+        if (activeCatalog != null) {
+            try {
+                return readFile(activeCatalog);
+            } catch (Exception ignored) {
+            }
+        }
+        return readAsset(context, "model_catalog.json");
+    }
+
+    private static String readFile(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            return output.toString(StandardCharsets.UTF_8.name());
+        }
     }
 
     private static String readAsset(Context context, String path) throws Exception {

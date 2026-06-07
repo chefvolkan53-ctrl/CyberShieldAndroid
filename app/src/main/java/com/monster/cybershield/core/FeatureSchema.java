@@ -6,6 +6,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ public final class FeatureSchema {
 
     public static FeatureSchema load(Context context, String assetName, int fallbackSize) {
         try {
-            JSONObject json = new JSONObject(readAsset(context, "metadata/" + assetName));
+            JSONObject json = new JSONObject(readMetadata(context, assetName));
             JSONArray array = firstArray(json, "feature_columns", "feature_names", "feature_order", "features");
             ArrayList<String> columns = new ArrayList<>();
             if (array != null) {
@@ -52,6 +54,17 @@ public final class FeatureSchema {
             }
             return new FeatureSchema(columns, null, null, false);
         }
+    }
+
+    private static String readMetadata(Context context, String assetName) throws Exception {
+        File activeMetadata = new SecurityUpdateStore(context).activeMetadataIfPresent(assetName);
+        if (activeMetadata != null) {
+            try {
+                return readFile(activeMetadata);
+            } catch (Exception ignored) {
+            }
+        }
+        return readAsset(context, "metadata/" + assetName);
     }
 
     public float[] packet(PacketInfo packet, int size) {
@@ -374,6 +387,18 @@ public final class FeatureSchema {
 
     private static String readAsset(Context context, String path) throws Exception {
         try (InputStream input = context.getAssets().open(path);
+             ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+            }
+            return output.toString(StandardCharsets.UTF_8.name());
+        }
+    }
+
+    private static String readFile(File file) throws Exception {
+        try (FileInputStream input = new FileInputStream(file);
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             byte[] buffer = new byte[8192];
             int read;

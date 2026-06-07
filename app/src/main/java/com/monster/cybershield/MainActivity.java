@@ -23,6 +23,9 @@ import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.PolicyAssistantText;
 import com.monster.cybershield.core.ProtectionPolicyStore;
+import com.monster.cybershield.core.SecurityUpdateManager;
+import com.monster.cybershield.core.SecurityUpdateScheduler;
+import com.monster.cybershield.core.SecurityUpdateStore;
 import com.monster.cybershield.model.ModelCatalog;
 
 import java.util.List;
@@ -53,6 +56,8 @@ public class MainActivity extends Activity {
         catalog = ModelCatalog.load(this);
         threatStore = new ThreatStore(this);
         requestNotificationPermission();
+        SecurityUpdateScheduler.scheduleDaily(this);
+        SecurityUpdateScheduler.checkIfDueAsync(this);
         render();
         startService(new Intent(this, CyberDefenseService.class).setAction(CyberDefenseService.ACTION_START));
     }
@@ -146,6 +151,26 @@ public class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this, "Koruma duraklatildi", Toast.LENGTH_SHORT).show();
             }
         }));
+        root.addView(secondaryButton("Guvenlik guncellemelerini kontrol et", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(MainActivity.this, "Guncelleme kontrol ediliyor", Toast.LENGTH_SHORT).show();
+                SecurityUpdateScheduler.checkNowAsync(MainActivity.this, true, new SecurityUpdateScheduler.Callback() {
+                    @Override
+                    public void onResult(SecurityUpdateManager.Result result) {
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                String message = result.success ? result.status : result.status + ": " + result.error;
+                                Toast.makeText(MainActivity.this, message, Toast.LENGTH_LONG).show();
+                                catalog = ModelCatalog.load(MainActivity.this);
+                                render();
+                            }
+                        });
+                    }
+                });
+            }
+        }));
 
         addSection("Son tehditler");
         if (activeEvents.isEmpty()) {
@@ -199,6 +224,7 @@ public class MainActivity extends Activity {
         panel.addView(text("Motor: " + vpnStatus.getString("mode", "not_started")
                 + " | Proxy " + vpnStatus.getLong("proxy_connections", 0L)
                 + " | Flow " + vpnStatus.getLong("proxy_analyzed_flows", 0L), 13, MUTED, false));
+        panel.addView(text("Guncelleme: otomatik acik | " + new SecurityUpdateStore(this).summary(), 13, MUTED, false));
         return panel;
     }
 

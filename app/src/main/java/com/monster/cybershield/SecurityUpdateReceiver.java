@@ -6,13 +6,10 @@ import android.content.Intent;
 
 import com.monster.cybershield.core.SecurityUpdateScheduler;
 
-public class BootReceiver extends BroadcastReceiver {
+public class SecurityUpdateReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
+        SecurityUpdateScheduler.checkNowAsync(context, false, null);
         SecurityUpdateScheduler.scheduleDaily(context);
-        SecurityUpdateScheduler.checkIfDueAsync(context);
-        Intent service = new Intent(context, CyberDefenseService.class);
-        service.setAction(CyberDefenseService.ACTION_START);
-        context.startForegroundService(service);
     }
 }

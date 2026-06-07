@@ -27,6 +27,7 @@ public final class DirectSocksProxy implements AutoCloseable {
     private final BlocklistStore blocklist;
     private final ProtectionPolicyStore protectionPolicy;
     private final ProxyTrafficMirror trafficMirror;
+    private final ThreatIntelStore threatIntelStore;
     private final int port;
     private final ExecutorService workers = Executors.newCachedThreadPool();
     private final java.util.concurrent.atomic.AtomicLong acceptedConnections = new java.util.concurrent.atomic.AtomicLong();
@@ -41,6 +42,7 @@ public final class DirectSocksProxy implements AutoCloseable {
         this.blocklist = new BlocklistStore(vpnService);
         this.protectionPolicy = new ProtectionPolicyStore(vpnService);
         this.trafficMirror = new ProxyTrafficMirror(vpnService);
+        this.threatIntelStore = new ThreatIntelStore(vpnService);
         this.port = port;
     }
 
@@ -308,7 +310,9 @@ public final class DirectSocksProxy implements AutoCloseable {
     private boolean isBlocked(String host, int targetPort) {
         String normalized = host == null ? "" : host.toLowerCase(Locale.US);
         return blocklist.isBlocked(normalized)
-                || blocklist.isBlocked(normalized + ":" + targetPort);
+                || blocklist.isBlocked(normalized + ":" + targetPort)
+                || threatIntelStore.isKnownMaliciousTarget(normalized)
+                || threatIntelStore.isKnownMaliciousTarget(normalized + ":" + targetPort);
     }
 
     private String targetHostForRequest(String host, int targetPort) {

@@ -121,6 +121,19 @@ flowchart LR
 - Wi-Fi Threat Monitor SSID/BSSID, RSSI, guvenlik tipi, gateway MAC, ARP tablo oynakligi ve DNS/HTTP downgrade ipuclarindan 48 feature uretir; Android'in ham 802.11 frame siniri nedeniyle deauth/beacon/Evil Twin sinyalleri sahada dolayli belirtilerle yaklasiklanir.
 - Production alarm politikasi, guvenilir resolver/VPN ic adres/Google ve Samsung sistem servislerini kullanici bildirimi olarak yukseltmez. Google Play, Play Protect, Android sistem baglantilari, Samsung Galaxy Store, Samsung account/cloud/update/FOTA alan adlari VPN telemetrisinde false-positive whitelist olarak ele alinir. DoH L1 sadece sessiz kapi modeli olarak calisir; ayni hedef icin kisa surede tekrar eden model sinyalleri tek bildirimde tutulur.
 
+## Online guvenlik guncellemeleri
+
+CyberShield modelleri telefonda rastgele yeniden egitmez. Profesyonel akis, yeni veriyi sunucu/Colab/GitHub Releases tarafinda egitip test etmek ve telefona imzali paket olarak indirmektir.
+
+- Uygulama gunde bir kez arka planda `model_update_manifest.json` kontrol eder.
+- Varsayilan politika Wi-Fi uzerinden guncellemedir; dusuk pilde arka plan kontrolu ertelenir.
+- Threat intelligence feed'leri zaralli domain/IP, phishing pattern, DoH endpoint ve riskli port sinyallerini gunceller.
+- TFLite model, metadata, katalog ve threshold paketleri SHA-256 ve ECDSA imzasi dogrulanmadan aktif edilmez.
+- Dosyalar once `staging` alanina iner, dogrulama gecerse atomik olarak `active` alana tasinir.
+- Bozuk veya imzasiz model reddedilir; uygulama asset icindeki yerlesik eski modele geri duser.
+- Ana ekranda guncelleme durumu gorunur ve manuel `Guvenlik guncellemelerini kontrol et` aksiyonu vardir.
+- Guncelleme manifest ve paket semasi `docs/SECURITY_UPDATE_PIPELINE.md` icinde tutulur.
+
 ## Android uygulama durumu
 
 - Paket adi: `com.monster.cybershield`
