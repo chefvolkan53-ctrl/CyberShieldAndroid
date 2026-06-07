@@ -56,6 +56,7 @@ Mevcut VPN servisinde:
 - Flow bazli paket/byte/sure/flag istatistikleri tutulur.
 - Blok listeye dusen domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari SOCKS koprusunde dusurulur.
 - Strict Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; allowlist bu karari hedef bazinda bypass edebilir.
+- DNS leak protection acikken UDP/TCP 53 istekleri secili resolver'a yonlendirilir. Varsayilan Cloudflare `1.1.1.1`; Quad9, Google ve AdGuard secilebilir. Bilinen DoH endpointleri strict modda sinirlanir.
 
 ```mermaid
 flowchart TD
@@ -64,6 +65,7 @@ flowchart TD
     Tun --> Native["libcybershield_forwarder.so"]
     Native --> Socks["DirectSocksProxy 127.0.0.1:10808"]
     Socks --> Policy["Blocklist / allowlist policy"]
+    Policy --> DnsGuard["DNS leak protection / single resolver"]
     Policy -->|allowed| Protect["VpnService.protect(socket)"]
     Policy -->|blocked| Drop["Drop flow"]
     Protect --> Internet["Wi-Fi / mobile internet"]

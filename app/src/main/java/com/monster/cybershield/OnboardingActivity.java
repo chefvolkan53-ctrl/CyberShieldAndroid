@@ -17,6 +17,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.monster.cybershield.core.ProtectionPolicyStore;
+
 public class OnboardingActivity extends Activity {
     public static final String PREF = "onboarding";
     public static final String KEY_DONE = "done";
@@ -42,9 +44,17 @@ public class OnboardingActivity extends Activity {
         root.addView(status("SMS korumasi", hasSmsPermission()));
         root.addView(status("Wi-Fi risk izni", hasWifiRiskPermission()));
         root.addView(status("VPN", VpnService.prepare(this) == null));
+        root.addView(status("DNS leak korumasi", new ProtectionPolicyStore(this).isDnsLeakProtectionEnabled()));
+        root.addView(status("Android Private DNS kapali", !isPrivateDnsActive()));
         root.addView(button(hasNotificationPermission() ? "Bildirim izni acik" : "Bildirim izni ver", v -> requestNotificationPermission()));
         root.addView(button(hasSmsPermission() ? "SMS korumasi acik" : "SMS korumasi izni ver", v -> requestSmsPermission()));
         root.addView(button(hasWifiRiskPermission() ? "Wi-Fi risk izni acik" : "Wi-Fi risk izni ver", v -> requestWifiRiskPermission()));
+        root.addView(button("DNS leak korumasini ac", v -> setDnsLeakProtection(true)));
+        root.addView(button("DNS resolver: Cloudflare", v -> setDnsResolver(ProtectionPolicyStore.DNS_CLOUDFLARE)));
+        root.addView(button("DNS resolver: Quad9", v -> setDnsResolver(ProtectionPolicyStore.DNS_QUAD9)));
+        root.addView(button("DNS resolver: Google", v -> setDnsResolver(ProtectionPolicyStore.DNS_GOOGLE)));
+        root.addView(button("DNS resolver: AdGuard", v -> setDnsResolver(ProtectionPolicyStore.DNS_ADGUARD)));
+        root.addView(button("Private DNS ayarini ac", v -> openPrivateDnsSettings()));
         root.addView(button("SMS izin ayarini ac", v -> openAppSettings()));
         root.addView(button("VPN korumasini etkinlestir", v -> requestVpnPermission()));
         root.addView(button("Pil optimizasyonundan muaf tut", v -> openBatteryOptimization()));
@@ -91,6 +101,20 @@ public class OnboardingActivity extends Activity {
         }
     }
 
+    private void setDnsLeakProtection(boolean enabled) {
+        new ProtectionPolicyStore(this).setDnsLeakProtection(enabled);
+        Toast.makeText(this, "DNS leak korumasi acik", Toast.LENGTH_SHORT).show();
+        render();
+    }
+
+    private void setDnsResolver(String resolver) {
+        ProtectionPolicyStore store = new ProtectionPolicyStore(this);
+        store.setDnsLeakProtection(true);
+        store.setDnsProvider(resolver);
+        Toast.makeText(this, "DNS resolver ayarlandi: " + resolver, Toast.LENGTH_SHORT).show();
+        render();
+    }
+
     private void startDefenseVpn() {
         try {
             startService(new Intent(this, DefenseVpnService.class));
@@ -115,6 +139,14 @@ public class OnboardingActivity extends Activity {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         intent.setData(Uri.parse("package:" + getPackageName()));
         startActivity(intent);
+    }
+
+    private void openPrivateDnsSettings() {
+        try {
+            startActivity(new Intent("android.settings.PRIVATE_DNS_SETTINGS"));
+        } catch (Exception e) {
+            startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+        }
     }
 
     private void finishOnboarding() {
@@ -160,6 +192,15 @@ public class OnboardingActivity extends Activity {
 
     private boolean hasWifiRiskPermission() {
         return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean isPrivateDnsActive() {
+        try {
+            String mode = Settings.Global.getString(getContentResolver(), "private_dns_mode");
+            return mode != null && !"off".equalsIgnoreCase(mode) && !"opportunistic".equalsIgnoreCase(mode);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private TextView status(String label, boolean enabled) {

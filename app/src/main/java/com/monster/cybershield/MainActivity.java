@@ -17,6 +17,7 @@ import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.PolicyAssistantText;
+import com.monster.cybershield.core.ProtectionPolicyStore;
 import com.monster.cybershield.model.ModelCatalog;
 import com.monster.cybershield.model.ModelSpec;
 
@@ -66,7 +67,9 @@ public class MainActivity extends Activity {
                 openThreats++;
             }
         }
+        ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
         root.addView(card("Risk paneli", "Acik olay: " + openThreats + " | Algilama modeli: " + catalog.all().size() + " | Policy modeli: aktif | Pil profili: dengeli"));
+        root.addView(card("DNS korumasi", policy.dnsLeakProtectionSummary() + " | Strict VPN: " + (policy.isStrictVpnRequired() ? "ACIK" : "KAPALI")));
 
         Button start = button("Korumayi baslat", new View.OnClickListener() {
             @Override

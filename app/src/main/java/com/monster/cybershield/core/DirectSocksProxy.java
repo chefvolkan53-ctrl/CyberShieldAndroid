@@ -87,6 +87,11 @@ public final class DirectSocksProxy implements AutoCloseable {
                 writeFailure(output, 0x02);
                 return;
             }
+            if (protectionPolicy.shouldBlockDohEndpoint(request.host, request.port)) {
+                raiseDnsLeakAlert(request.host, request.port, "DoH endpoint sinirlandi");
+                writeFailure(output, 0x02);
+                return;
+            }
             if (shouldBlockCleartextHttp(request.host, request.port)) {
                 raiseCleartextHttpAlert(request.host, request.port);
                 writeFailure(output, 0x02);
@@ -144,7 +149,7 @@ public final class DirectSocksProxy implements AutoCloseable {
         Socket remote = new Socket();
         vpnService.protect(remote);
         try {
-            remote.connect(new InetSocketAddress(request.host, request.port), 12_000);
+            remote.connect(new InetSocketAddress(targetHostForRequest(request.host, request.port), request.port), 12_000);
         } catch (IOException e) {
             writeFailure(clientOutput, 0x05);
             closeQuietly(remote);
@@ -206,7 +211,8 @@ public final class DirectSocksProxy implements AutoCloseable {
                 if (!dnsQuery.isEmpty() && isBlocked(dnsQuery, 53)) {
                     continue;
                 }
-                DatagramPacket out = new DatagramPacket(request.payload, request.payload.length, InetAddress.getByName(request.host), request.port);
+                String targetHost = targetHostForRequest(request.host, request.port);
+                DatagramPacket out = new DatagramPacket(request.payload, request.payload.length, InetAddress.getByName(targetHost), request.port);
                 remoteSocket.send(out);
             } catch (IOException ignored) {
             }
@@ -283,6 +289,16 @@ public final class DirectSocksProxy implements AutoCloseable {
                 || blocklist.isBlocked(normalized + ":" + targetPort);
     }
 
+    private String targetHostForRequest(String host, int targetPort) {
+        if (targetPort == 53 && protectionPolicy.isDnsLeakProtectionEnabled()) {
+            if (!protectionPolicy.shouldAllowDnsResolver(host)) {
+                raiseDnsLeakAlert(host, targetPort, "DNS leak yonlendirildi");
+            }
+            return protectionPolicy.dnsProvider();
+        }
+        return host;
+    }
+
     private boolean shouldBlockCleartextHttp(String host, int targetPort) {
         if (targetPort != 80 || !protectionPolicy.shouldBlockCleartextHttp()) {
             return false;
@@ -303,6 +319,29 @@ public final class DirectSocksProxy implements AutoCloseable {
         intent.putExtra(CyberDefenseService.EXTRA_TARGET, host + ":" + targetPort);
         intent.putExtra(CyberDefenseService.EXTRA_SEVERITY, "high");
         intent.putExtra(CyberDefenseService.EXTRA_PROBABILITY, 0.78);
+        intent.putExtra(CyberDefenseService.EXTRA_RECOMMENDED_ACTION, "block_flow");
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                vpnService.startForegroundService(intent);
+            } else {
+                vpnService.startService(intent);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void raiseDnsLeakAlert(String host, int targetPort, String title) {
+        if (!protectionPolicy.shouldRaiseDnsLeakAlert()) {
+            return;
+        }
+        Intent intent = new Intent(vpnService, CyberDefenseService.class);
+        intent.setAction(CyberDefenseService.ACTION_RAISE_THREAT);
+        intent.putExtra(CyberDefenseService.EXTRA_MODEL_ID, "dns_stateful");
+        intent.putExtra(CyberDefenseService.EXTRA_TITLE, title);
+        intent.putExtra(CyberDefenseService.EXTRA_SOURCE, "vpn_dns_leak_guard");
+        intent.putExtra(CyberDefenseService.EXTRA_TARGET, host + ":" + targetPort);
+        intent.putExtra(CyberDefenseService.EXTRA_SEVERITY, "high");
+        intent.putExtra(CyberDefenseService.EXTRA_PROBABILITY, 0.82);
         intent.putExtra(CyberDefenseService.EXTRA_RECOMMENDED_ACTION, "block_flow");
         try {
             if (Build.VERSION.SDK_INT >= 26) {

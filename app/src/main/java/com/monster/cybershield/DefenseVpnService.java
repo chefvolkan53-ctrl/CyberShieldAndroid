@@ -11,6 +11,7 @@ import com.monster.cybershield.core.FlowStats;
 import com.monster.cybershield.core.FlowTracker;
 import com.monster.cybershield.core.NativeVpnForwarder;
 import com.monster.cybershield.core.PacketInfo;
+import com.monster.cybershield.core.ProtectionPolicyStore;
 import com.monster.cybershield.core.ThreatEngine;
 
 import java.io.File;
@@ -65,8 +66,13 @@ public class DefenseVpnService extends VpnService {
                 .addAddress("10.88.0.2", 32)
                 .setMtu(VPN_MTU);
         if (fullDeviceRoute) {
+            ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
             builder.addRoute("0.0.0.0", 0)
-                    .addDnsServer("1.1.1.1");
+                    .addDnsServer(policy.dnsProvider());
+            String secondaryDns = policy.dnsProviderSecondary();
+            if (!secondaryDns.isEmpty()) {
+                builder.addDnsServer(secondaryDns);
+            }
             try {
                 builder.addDisallowedApplication(getPackageName());
             } catch (Exception ignored) {

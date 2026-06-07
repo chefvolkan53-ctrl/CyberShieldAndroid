@@ -21,6 +21,7 @@
 - `wifi_threat_detector.tflite` eklendi; ARP Poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing, SSL stripping ve CIC/CAP ag CSV'lerinden 916.777 ornekle egitildi.
 - `WifiThreatMonitor` eklendi; SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi ve Wi-Fi izinli Android sinyallerinden 48 feature uretir.
 - Telefon-ustu mudahale guclendirildi: supheli Wi-Fi strict VPN modu, otomatik VPN baslatma, DNS sorgu adi bloklama, URL-domain normalizasyonu ve HTTP downgrade engelleme eklendi.
+- DNS leak protection modu eklendi: UDP/TCP 53 tek resolver'a yonlendirilir, Private DNS icin kurulum uyarisi gosterilir ve DoH bypass endpointleri strict modda sinirlanir.
 - `android_malware_flow_detector.tflite` eklendi; CIC-AndMal2017_raw altindaki 2.131 CSV okundu, flow uyumlu 2.127 CSV'den 900.000 dengeli ornekle Android malware ag davranisi destek modeli egitildi.
 
 ### Dogrulama

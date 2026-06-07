@@ -24,6 +24,7 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - `libcybershield_forwarder.so`: arm64-v8a native tun2socks motoru olarak paketlenir; VPN izni verildiginde tam cihaz rotasini TCP/UDP forwarding ile internete tasir.
 - `DirectSocksProxy`: native motorun yerel SOCKS cikisini karsilar, `VpnService.protect()` ile donguye girmeyen outbound soket acar; blok listedeki domain/IP/port, URL'den normalize edilen domain ve DNS sorgu adi akislarini dusurur.
 - `ProtectionPolicyStore`: supheli Wi-Fi durumunda strict VPN koruma penceresi acar; VPN izni onceden verildiyse servis otomatik baslar ve riskli cleartext HTTP downgrade akisleri engellenir.
+- DNS leak protection: UDP/TCP 53 istekleri tek secili resolver'a yonlendirilir, DoH bypass endpointleri strict modda sinirlanir ve Android Private DNS durumu kurulum ekraninda uyarilir.
 - `SourceFieldTestActivity`: ADB ile cagrilabilen gizli saha testi; SMS izni, APK receiver, link scanner, VPN izin durumu ve 9503 APK feature uretimini raporlar.
 - `PolicyInterventionModel`: CyberShield policy TFLite modelini yukler; olay tipi, kaynak, risk ve hedef sinyallerinden profesyonel mudahale onerisi uretir.
 - `PolicyAssistantText`: ham aksiyon adlarini kullaniciya anlamli guvenlik diline cevirir; bildirim ve mudahale ekraninda gerekce, etki ve geri alma bilgisini gosterir.
@@ -63,6 +64,7 @@ Native motor yuklenemez veya baslatilamazsa uygulama telefonu internetsiz birakm
 - Kalibrasyon aktivitesi ve kalici threshold store eklendi.
 - Native VPN forwarding arm64-v8a icin paketlendi; tam cihaz rotasi, yerel SOCKS koprusu, `VpnService.protect()` ve guvenli fallback akisi eklendi.
 - Telefon-ustu mudahale guclendirildi: Wi-Fi tehdidinde strict VPN modu, DNS sorgu adi bazli bloklama, URL-domain normalizasyonu ve supheli HTTP downgrade engelleme eklendi.
+- DNS leak protection modu eklendi; varsayilan Cloudflare `1.1.1.1`, istege bagli Quad9/Google/AdGuard secimi ve port 53 resolver yonlendirmesi desteklenir.
 - TensorFlow Lite runtime `2.17.0` surumune cikarildi.
 - Bildirimlerde ham "uyar" gibi ifadeler yerine profesyonel mudahale aciklamasi, risk gerekcesi ve geri alma bilgisi kullanilir.
 - Android normal uygulamalari monitor-mode 802.11 frame okuyamadigi icin Wi-Fi Threat Detector sahada ham deauth/beacon frame yerine Android'in erisebildigi SSID/BSSID/RSSI/gateway/ARP/VPN-DNS belirtileriyle calisir; gercek Galaxy A56 saha kalibrasyonu onerilir.
