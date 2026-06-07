@@ -1620,7 +1620,7 @@
     "CVE-2004-0210",
     "CVE-2002-0367"
   ],
-  "generated_at": "2026-06-07T22:53:20.239305Z",
+  "generated_at": "2026-06-07T23:02:48.465498Z",
   "id": "threat_intel",
   "malicious_cidrs": [
     "1.10.16.0/20",
@@ -9104,7 +9104,6 @@
     "gadomamada.com",
     "gadvzmy.lampaoszlopbolt.hu",
     "gahay.visszateritok.net",
-    "gala-net.galactoview.in.net",
     "galaxis.fun",
     "galeri3.arkitera.com",
     "galerisenimutiara.com",
@@ -15359,7 +15358,8 @@
     "rzdwkgtc.chernichco5t.digital",
     "rzeusijc.dependint7amur.in.net",
     "rzlt.getron.in.net",
-    "s-master.sarahkapsreit.work"
+    "s-master.sarahkapsreit.work",
+    "s.littleshabby.net"
   ],
   "malicious_ips": [
     "1.10.209.143",
@@ -18219,7 +18219,6 @@
     "115.60.252.140",
     "115.60.252.237",
     "115.60.252.3",
-    "115.60.252.46",
     "115.60.252.86",
     "115.60.253.126",
     "115.61.0.207",
@@ -23633,6 +23632,7 @@
     "182.127.36.20",
     "182.127.38.189",
     "182.127.39.148",
+    "182.127.39.231",
     "182.127.4.146",
     "182.127.4.86",
     "182.127.40.180",
@@ -47399,5 +47399,5 @@
     "spamhaus_drop": "ok:1735",
     "urlhaus": "ok:legacy_text"
   },
-  "version": "2026.06.07.2253"
+  "version": "2026.06.07.2302"
 }
