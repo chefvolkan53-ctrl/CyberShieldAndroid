@@ -123,7 +123,7 @@ public final class PolicyInterventionModel implements AutoCloseable {
 
     private static int targetTypeId(String modelId) {
         if ("social_text".equals(modelId)) return 0;
-        if ("social_url".equals(modelId) || "phishing_html".equals(modelId)) return 1;
+        if ("social_url".equals(modelId) || "phishing_html".equals(modelId) || "stealth_phisher_2025".equals(modelId)) return 1;
         if ("dns_stateful".equals(modelId)) return 2;
         if ("network_attack".equals(modelId) || "doh_l1".equals(modelId) || "doh_l2".equals(modelId)) return 4;
         if ("android_malware".equals(modelId)) return 5;

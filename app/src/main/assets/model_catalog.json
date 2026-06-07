@@ -108,6 +108,17 @@
       "interventions": ["warn", "block_domain", "quarantine_message"]
     },
     {
+      "id": "stealth_phisher_2025",
+      "title": "StealthPhisher2025 URL/HTML",
+      "asset": "models/stealthphisher2025_url_html_heuristic.tflite",
+      "input_size": 59,
+      "outputs": ["phishing_probability"],
+      "threshold": 0.2478628457,
+      "accuracy": 0.9989903589,
+      "recall": 0.9985969436,
+      "interventions": ["warn", "block_domain", "quarantine_message", "open_safe_browser_warning"]
+    },
+    {
       "id": "iot_attack",
       "title": "IoT/IIoT Attack",
       "asset": "models/iot_iiot_attack_detector.tflite",

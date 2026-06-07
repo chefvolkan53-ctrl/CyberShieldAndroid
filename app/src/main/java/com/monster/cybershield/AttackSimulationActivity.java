@@ -25,6 +25,7 @@ public class AttackSimulationActivity extends Activity {
             {"social_text", "Sosyal mühendislik metin simülasyonu", "sms_email_guard", "urgent-password-reset.test", 0.95},
             {"social_url", "Sosyal mühendislik URL simülasyonu", "link_guard", "secure-login-verify.test", 0.93},
             {"phishing_html", "HTML phishing simülasyonu", "browser_guard", "fake-bank-login.test", 0.92},
+            {"stealth_phisher_2025", "Stealth phishing URL/HTML simülasyonu", "browser_guard", "https://docs.google.com/forms/d/fake-login", 0.97},
             {"iot_attack", "IoT/IIoT saldırı simülasyonu", "iot_guard", "iot-camera-01.test", 0.96},
             {"attack_anomaly", "TLS/session anomali simülasyonu", "tls_guard", "tls-anomaly.test", 0.87},
             {"post_quantum", "Post-kuantum anomali simülasyonu", "pqc_guard", "pqc-handshake.test", 0.90},

@@ -4,7 +4,7 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 
 ## Bu ilk surumde hazir olanlar
 
-- 16 TFLite model `assets/models` altinda paketlenir.
+- 17 TFLite model `assets/models` altinda paketlenir.
 - `model_catalog.json` model esiklerini, giris boyutlarini ve mudahale politikasini tutar.
 - `CyberDefenseService` foreground servis olarak arka planda dusuk guc profilinde calisir.
 - Tehdit bildirimi, ilgili `InterventionActivity` ekranina dogrudan gider.
@@ -26,7 +26,8 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - `PolicyAssistantText`: ham aksiyon adlarini kullaniciya anlamli guvenlik diline cevirir; bildirim ve mudahale ekraninda gerekce, etki ve geri alma bilgisini gosterir.
 - `MitmArpMonitor`: Wi-Fi gateway MAC degisimi, ayni IP icin birden fazla MAC, ARP tablo dalgalanmasi, local-admin MAC ve broadcast/zero MAC gibi sinyalleri 32 feature olarak MITM/ARP TFLite modeline verir.
 - Wi-Fi MITM / ARP spoofing modulunde kural tabanli skor ile model riski birlestirilir; supheli Wi-Fi agini isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
-- Son cihaz self-test sonucu: 16/16 model OK.
+- `StealthPhisher2025`: 59 sayisal URL/HTML/sezgisel ozellikle modern phishing altyapilarini, IPFS/kisa link/Google Sites benzeri barindirma izlerini, form/parola sinyallerini ve entropy/obfuscation degerlerini analiz eder.
+- Son cihaz self-test sonucu: 17/17 model OK.
 
 ## Android gercegi
 
@@ -46,6 +47,8 @@ Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan on
 
 - CyberShield Policy Assistant TFLite modeli uygulamaya eklendi.
 - Wi-Fi MITM / ARP Spoofing icin hibrit kural + TFLite savunma modulu eklendi.
+- StealthPhisher2025 URL/HTML heuristic TFLite modeli uygulamaya eklendi.
 - TensorFlow Lite runtime `2.17.0` surumune cikarildi.
 - Bildirimlerde ham "uyar" gibi ifadeler yerine profesyonel mudahale aciklamasi, risk gerekcesi ve geri alma bilgisi kullanilir.
 - MITM/ARP model skorlari sentetik/heuristic bootstrap veri setinden gelir; gercek lab trafiyle yeniden kalibrasyon onerilir.
+- StealthPhisher2025 modelinde ham `URL`, `Domain`, `TLD` stringleri ve dis skor gibi duran `WAPLegitimate/WAPPhishing` alanlari modele alinmadi; uretilebilir 59 numeric feature kullanildi.

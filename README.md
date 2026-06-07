@@ -4,7 +4,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 ## Temel yetenekler
 
-- 16 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
+- 17 adet TFLite model uygulama icinde paketlenir ve cihaz uzerinde offline inference yapar.
 - Foreground servis ile arka planda otomatik savunma calisir.
 - Bildirimler dogrudan ilgili mudahale ekranina gider.
 - Mudahale secenekleri: uyar, engelle, 1 saat gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina yonlendir.
@@ -27,6 +27,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 | Social Engineering Text | 2530 | 97.78% | 96.22% | SMS/metinlerde aciliyet, korku, odul, banka ve kimlik dogrulama baskisini sezgisel sinyale cevirir. |
 | Social Engineering URL | 48 | 97.67% | 97.87% | URL yapisi, alan adi, path/query ve phishing kelime sinyallerini analiz eder. |
 | Phishing HTML | 40 | 90.62% | 92.20% | Link/HTML form, parola, iframe, script ve mixed-content sinyallerini degerlendirir. |
+| StealthPhisher2025 URL/HTML | 59 | 99.90% | 99.86% | Modern phishing altyapilarini, IPFS/kisa link/Google Sites benzeri barindirma izlerini, URL karmasikligini, form/parola ve HTML sezgisel sinyallerini analiz eder. |
 | IoT/IIoT Attack | 71 | 92.42% | 98.82% | IoT/IIoT akislari icin endpoint izolasyonu ve flow bloklama karari uretir. |
 | TLS/Session Anomaly | 32 | 97.34% | 82.73% | TLS/session davranisinda anomali riskini skorlar. |
 | Post-Quantum Anomaly | 32 | 84.88% | 98.00% | PQC/TLS session sinyallerinde anomali odakli yuksek yakalama saglar. |
@@ -37,6 +38,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 
 > Skorlar egitim/test veri setleri uzerinden olculmustur. Gercek saha trafiginde esik kalibrasyonu, loglama ve false-positive takibi gereklidir.
 > MITM/ARP modeli su anda sentetik/heuristic bootstrap veri setiyle egitildi; gercek lab ARP spoofing yakalamalariyla yeniden kalibre edilmesi onerilir.
+> StealthPhisher2025 modelinde ham `URL`, `Domain`, `TLD` stringleri ve dis skor gibi duran `WAPLegitimate/WAPPhishing` alanlari ezberleme/sizinti riskine karsi modele alinmadi; bunlar yerine 59 uretilebilir sayisal ozellik kullanildi.
 
 ## Egitim ve donusturme ozeti
 
@@ -52,7 +54,8 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 5. Uygulama icinde `model_catalog.json` ile esik, dogruluk, recall, girdi boyutu ve mudahale politikasi merkezi hale getirildi.
 6. Policy Assistant modeli, olay riskini kullaniciya uygulanabilir aksiyon diline ceviren ayri bir TFLite karar katmani olarak eklendi.
 7. MITM/ARP modeli, cihaz uzerindeki Wi-Fi gateway ve `/proc/net/arp` sinyallerinden 32 feature ureten hibrit monitor ile baglandi.
-8. Telefonda self-test ile 16/16 modelin yuklendigi ve inference calistirdigi dogrulandi.
+8. StealthPhisher2025 modeli 336.749 satirlik dengeli phishing veri setiyle egitildi; esik `0.2478628457` olarak kalibre edildi.
+9. Telefonda self-test ile 17/17 modelin yuklendigi ve inference calistirdigi dogrulandi.
 
 ## Savunma mimarisi
 
@@ -89,7 +92,7 @@ flowchart LR
 - Target SDK: 35
 - TFLite runtime: `org.tensorflow:tensorflow-lite:2.17.0`
 - Test cihaz: Samsung Galaxy A56 (`SM_A566B`)
-- Son self-test: 16 model OK
+- Son self-test: 17 model OK
 - Launcher/adaptive icon eklendi.
 
 ## Uretim notu

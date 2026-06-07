@@ -70,6 +70,7 @@ public final class ThreatEngine {
     public void analyzeUrl(String url, String source) {
         analyze("social_url", socialUrlSchema.url(url, 48), source, url, "Supheli baglanti riski");
         analyze("phishing_html", FeatureExtractor.phishingHtml(url), source, url, "Phishing baglanti riski");
+        analyze("stealth_phisher_2025", FeatureExtractor.stealthPhisher2025(url), source, url, "Stealth phishing riski");
     }
 
     public void analyzeApk(String packageName) {

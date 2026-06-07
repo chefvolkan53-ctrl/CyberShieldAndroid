@@ -95,6 +95,88 @@ public final class FeatureExtractor {
         return features;
     }
 
+    public static float[] stealthPhisher2025(String htmlOrUrl) {
+        float[] features = new float[59];
+        String raw = safe(htmlOrUrl).trim();
+        String text = raw.toLowerCase(Locale.US);
+        Uri uri = Uri.parse(ensureUrl(raw));
+        String host = safe(uri.getHost()).toLowerCase(Locale.US);
+        String path = safe(uri.getPath()).toLowerCase(Locale.US);
+        String query = safe(uri.getQuery()).toLowerCase(Locale.US);
+        String fragment = safe(uri.getFragment()).toLowerCase(Locale.US);
+        String url = raw.isEmpty() ? "" : ensureUrl(raw);
+        String tld = tld(host);
+        int len = url.length();
+        int letters = letterCount(url);
+        int digits = digitCount(url);
+        int otherSpecial = otherSpecialCount(url);
+        int boolCount = 0;
+
+        features[0] = len;
+        features[1] = urlComplexity(url);
+        features[2] = len == 0 ? 0 : (float) uniqueCharCount(url) / len;
+        features[3] = host.length();
+        features[4] = isIp(host);
+        features[5] = tld.length();
+        features[6] = letters;
+        features[7] = len == 0 ? 0 : (float) letters / len;
+        features[8] = digits;
+        features[9] = len == 0 ? 0 : (float) digits / len;
+        features[10] = countChar(url, '=');
+        features[11] = countChar(url, '?');
+        features[12] = countChar(url, '&');
+        features[13] = otherSpecial;
+        features[14] = len == 0 ? 0 : (float) otherSpecial / len;
+        features[15] = countChar(url, '#');
+        features[16] = Math.max(0, host.split("\\.").length - 2);
+        features[17] = path.length() > 1 ? 1 : 0;
+        features[18] = path.length();
+        features[19] = query.length();
+        features[20] = fragment.length();
+        features[21] = url.contains("#") ? 1 : 0;
+        features[22] = url.startsWith("https://") ? 1 : 0;
+        features[23] = 0;
+        features[24] = lineCount(raw);
+        features[25] = longestLineLength(raw);
+        features[26] = containsAny(text, "<title", "</title>") == 1 || !host.isEmpty() ? 1 : 0;
+        features[27] = containsAny(text, "favicon", "shortcut icon", "apple-touch-icon") == 1 || url.startsWith("https://") ? 1 : 0;
+        features[28] = containsAny(text, "robots", "noindex", "nofollow");
+        features[29] = containsAny(text, "viewport", "responsive", "@media", "bootstrap");
+        features[30] = containsAny(text, "redirect", "window.location", "http-equiv=\"refresh\"", "bit.ly", "tinyurl", "qrco.de", "t.co", "is.gd", "shorturl");
+        features[31] = containsAny(text, "self.location", "location.href");
+        features[32] = containsAny(text, "description", "og:description", "twitter:description");
+        features[33] = containsAny(text, "popup", "window.open", "modal");
+        features[34] = containsAny(text, "<iframe", " iframe");
+        features[35] = containsAny(text, "<form") == 1 && containsAny(text, "action=\"http", "action='http") == 1 ? 1 : 0;
+        features[36] = containsAny(text, "facebook", "twitter", "instagram", "linkedin", "youtube", "x.com");
+        features[37] = containsAny(text, "submit", "type=\"submit", "type='submit");
+        features[38] = containsAny(text, "type=\"hidden", "type='hidden", "display:none", "visibility:hidden");
+        features[39] = containsAny(text, "password", "passwd", "pwd", "otp", "2fa");
+        features[40] = containsAny(text, "bank", "banka", "iban", "swift", "account", "hesap");
+        features[41] = containsAny(text, "payment", "pay", "card", "visa", "mastercard", "billing", "invoice", "odeme");
+        features[42] = containsAny(text, "crypto", "wallet", "bitcoin", "ethereum", "usdt", "metamask", "seed phrase");
+        features[43] = containsAny(text, "copyright", "(c)", "all rights reserved");
+        features[44] = countOccurrences(text, "<img");
+        features[45] = countOccurrences(text, ".css") + countOccurrences(text, "stylesheet");
+        features[46] = countOccurrences(text, ".js") + countOccurrences(text, "<script");
+        features[47] = countOccurrences(text, "href=\"/") + countOccurrences(text, "href='/");
+        features[48] = countOccurrences(text, "href=\"#") + countOccurrences(text, "href=\"\"") + countOccurrences(text, "href=''");
+        features[49] = countOccurrences(text, "href=\"http") + countOccurrences(text, "href='http");
+        features[50] = countOccurrences(text, "popup") + countOccurrences(text, "window.open");
+        features[51] = countOccurrences(text, "<iframe");
+        for (int i = 22; i <= 43; i++) {
+            boolCount += features[i] > 0 ? 1 : 0;
+        }
+        features[52] = boolCount;
+        features[53] = shannonEntropy(url);
+        features[54] = fractalApprox(url);
+        features[55] = kolmogorovApprox(url);
+        features[56] = countRegex(text, "\\b[0-9a-f]{16,}\\b");
+        features[57] = countRegex(text, "\\b[A-Za-z0-9+/]{24,}={0,2}\\b");
+        features[58] = phishingLikeliness(text, host, url);
+        return features;
+    }
+
     public static float[] apk(Context context, String packageName) {
         float[] features = new float[9503];
         try {
@@ -357,8 +439,9 @@ public final class FeatureExtractor {
 
     private static int countChar(String text, char needle) {
         int count = 0;
-        for (int i = 0; i < safe(text).length(); i++) {
-            if (text.charAt(i) == needle) {
+        String value = safe(text);
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == needle) {
                 count++;
             }
         }
@@ -367,12 +450,160 @@ public final class FeatureExtractor {
 
     private static int digitCount(String text) {
         int count = 0;
-        for (int i = 0; i < safe(text).length(); i++) {
-            if (Character.isDigit(text.charAt(i))) {
+        String value = safe(text);
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isDigit(value.charAt(i))) {
                 count++;
             }
         }
         return count;
+    }
+
+    private static int letterCount(String text) {
+        int count = 0;
+        String value = safe(text);
+        for (int i = 0; i < value.length(); i++) {
+            if (Character.isLetter(value.charAt(i))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int uniqueCharCount(String text) {
+        boolean[] seen = new boolean[128];
+        int count = 0;
+        String value = safe(text);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            int index = c < 128 ? c : 0;
+            if (!seen[index]) {
+                seen[index] = true;
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static int otherSpecialCount(String text) {
+        int count = 0;
+        String value = safe(text);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (!Character.isLetterOrDigit(c) && c != ':' && c != '/' && c != '.') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static float urlComplexity(String url) {
+        String value = safe(url);
+        if (value.isEmpty()) {
+            return 0f;
+        }
+        return uniqueCharCount(value)
+                + otherSpecialCount(value) * 1.25f
+                + digitCount(value) * 0.35f
+                + countChar(value, '-') * 0.75f
+                + countChar(value, '_') * 0.75f;
+    }
+
+    private static int lineCount(String text) {
+        String value = safe(text);
+        if (value.isEmpty()) {
+            return 0;
+        }
+        return value.split("\\r?\\n", -1).length;
+    }
+
+    private static int longestLineLength(String text) {
+        int longest = 0;
+        for (String line : safe(text).split("\\r?\\n", -1)) {
+            longest = Math.max(longest, line.length());
+        }
+        return longest;
+    }
+
+    private static int countOccurrences(String text, String needle) {
+        String value = safe(text);
+        if (needle.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        int index = 0;
+        while ((index = value.indexOf(needle, index)) >= 0) {
+            count++;
+            index += needle.length();
+        }
+        return count;
+    }
+
+    private static int countRegex(String text, String regex) {
+        Matcher matcher = Pattern.compile(regex).matcher(safe(text));
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
+    private static float shannonEntropy(String text) {
+        String value = safe(text);
+        if (value.isEmpty()) {
+            return 0f;
+        }
+        int[] counts = new int[256];
+        for (int i = 0; i < value.length(); i++) {
+            counts[value.charAt(i) & 0xFF]++;
+        }
+        double entropy = 0.0;
+        for (int count : counts) {
+            if (count > 0) {
+                double p = (double) count / value.length();
+                entropy -= p * (Math.log(p) / Math.log(2.0));
+            }
+        }
+        return (float) entropy;
+    }
+
+    private static float fractalApprox(String text) {
+        String value = safe(text);
+        if (value.isEmpty()) {
+            return 0f;
+        }
+        float uniqueRatio = (float) uniqueCharCount(value) / Math.max(1, value.length());
+        return Math.min(1.5f, 0.75f + uniqueRatio);
+    }
+
+    private static float kolmogorovApprox(String text) {
+        String value = safe(text);
+        if (value.isEmpty()) {
+            return 0f;
+        }
+        return Math.min(2.0f, shannonEntropy(value) / 4.0f + (float) uniqueCharCount(value) / Math.max(1, value.length()));
+    }
+
+    private static float phishingLikeliness(String text, String host, String url) {
+        float score = 0f;
+        score += isIp(host) * 0.18f;
+        score += url.startsWith("https://") ? 0f : 0.12f;
+        score += containsAny(text, "login", "signin", "verify", "account", "password", "otp", "bank", "wallet") * 0.14f;
+        score += containsAny(host, "duckdns", "ipfs", "pages.dev", "workers.dev", "firebase", "storage.googleapis", "sites.google", "docs.google") * 0.16f;
+        score += containsAny(host, "bit.ly", "tinyurl", "qrco.de", "t.co", "is.gd", "shorturl", "q-r.to") * 0.12f;
+        score += countChar(url, '-') >= 2 ? 0.06f : 0f;
+        score += digitCount(url) >= 8 ? 0.08f : 0f;
+        score += shannonEntropy(url) >= 4.0f ? 0.08f : 0f;
+        return Math.min(1f, score);
+    }
+
+    private static String tld(String host) {
+        String value = safe(host);
+        int index = value.lastIndexOf('.');
+        if (index < 0 || index + 1 >= value.length()) {
+            return "";
+        }
+        return value.substring(index + 1);
     }
 
     private static int isIp(String host) {
