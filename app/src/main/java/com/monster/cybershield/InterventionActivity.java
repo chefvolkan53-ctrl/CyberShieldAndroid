@@ -2,6 +2,8 @@ package com.monster.cybershield;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -16,6 +18,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.monster.cybershield.core.AlertNoisePolicy;
 import com.monster.cybershield.core.InterventionActions;
 import com.monster.cybershield.core.PolicyAssistantText;
 import com.monster.cybershield.core.ThreatEvent;
@@ -137,8 +140,7 @@ public class InterventionActivity extends Activity {
             public void onClick(View v) {
                 InterventionActions.allow(InterventionActivity.this, event);
                 Toast.makeText(InterventionActivity.this, "Olay guvenli olarak isaretlendi", Toast.LENGTH_SHORT).show();
-                event = store.find(event.id);
-                render();
+                completeResolution();
             }
         }));
         root.addView(actions);
@@ -188,8 +190,7 @@ public class InterventionActivity extends Activity {
                 .setPositiveButton("Engelle", (dialog, which) -> {
                     InterventionActions.block(this, event);
                     Toast.makeText(this, "Engelleme kaydedildi", Toast.LENGTH_SHORT).show();
-                    event = store.find(event.id);
-                    render();
+                    completeResolution();
                 })
                 .setNegativeButton("Vazgec", null)
                 .show();
@@ -202,8 +203,7 @@ public class InterventionActivity extends Activity {
                 .setPositiveButton("Karantina", (dialog, which) -> {
                     InterventionActions.quarantine(this, event);
                     Toast.makeText(this, "Karantina kaydedildi", Toast.LENGTH_SHORT).show();
-                    event = store.find(event.id);
-                    render();
+                    completeResolution();
                 })
                 .setNegativeButton("Vazgec", null)
                 .show();
@@ -216,8 +216,7 @@ public class InterventionActivity extends Activity {
                 .setPositiveButton("1 saat engelle", (dialog, which) -> {
                     InterventionActions.temporaryBlock(this, event);
                     Toast.makeText(this, "Gecici engel kaydedildi", Toast.LENGTH_SHORT).show();
-                    event = store.find(event.id);
-                    render();
+                    completeResolution();
                 })
                 .setNegativeButton("Vazgec", null)
                 .show();
@@ -229,6 +228,7 @@ public class InterventionActivity extends Activity {
                 .setMessage("Android guvenligi geregi uygulama kaldirma islemi sistem onayi ile yapilir.")
                 .setPositiveButton("Sistem kaldirma ekranini ac", (dialog, which) -> {
                     store.mark(event.id, InterventionActions.STATUS_REMOVE_REQUESTED);
+                    clearThreatNotification();
                     startActivity(InterventionActions.uninstallIntent(event));
                 })
                 .setNegativeButton("Vazgec", null)
@@ -242,6 +242,23 @@ public class InterventionActivity extends Activity {
             startActivityForResult(vpnIntent, REQ_VPN);
         } else {
             startDefenseVpn();
+        }
+    }
+
+    private void completeResolution() {
+        clearThreatNotification();
+        Intent main = new Intent(this, MainActivity.class);
+        main.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(main);
+        finish();
+    }
+
+    private void clearThreatNotification() {
+        try {
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            manager.cancel(AlertNoisePolicy.notificationIdFor(event.target));
+            manager.cancel(11);
+        } catch (Exception ignored) {
         }
     }
 

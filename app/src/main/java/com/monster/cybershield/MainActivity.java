@@ -76,28 +76,17 @@ public class MainActivity extends Activity {
         root.addView(text("Telefon, ag, DNS, link, SMS ve APK kaynaklari otomatik izleniyor. Kritik olaylarda bildirim dogrudan mudahale ekranina gider.", 14, MUTED, false));
         addSpace(10);
 
-        int openThreats = 0;
-        ThreatEvent latest = null;
-        ThreatEvent firstOpen = null;
-        for (ThreatEvent event : threatStore.list()) {
-            if ("new".equals(event.status)) {
-                openThreats++;
-                if (firstOpen == null) {
-                    firstOpen = event;
-                }
-            }
-            if (latest == null) {
-                latest = event;
-            }
-        }
+        List<ThreatEvent> activeEvents = threatStore.activeList();
+        List<ThreatEvent> historyEvents = threatStore.historyList();
+        int openThreats = activeEvents.size();
+        ThreatEvent firstOpen = activeEvents.isEmpty() ? null : activeEvents.get(0);
+        ThreatEvent latest = historyEvents.isEmpty() ? null : historyEvents.get(0);
         ProtectionPolicyStore policy = new ProtectionPolicyStore(this);
         SharedPreferences vpnStatus = getSharedPreferences("vpn_status", MODE_PRIVATE);
 
         root.addView(statusPanel(openThreats, policy, vpnStatus));
         if (firstOpen != null) {
             root.addView(threatPanel(firstOpen, true));
-        } else if (latest != null) {
-            root.addView(threatPanel(latest, true));
         }
 
         addSection("Hizli kontroller");
@@ -127,6 +116,22 @@ public class MainActivity extends Activity {
                 render();
             }
         }));
+        root.addView(secondaryButton("Cozulen olaylari temizle", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                threatStore.clearResolved();
+                Toast.makeText(MainActivity.this, "Cozulen olay gecmisi temizlendi", Toast.LENGTH_SHORT).show();
+                render();
+            }
+        }));
+        root.addView(secondaryButton("Tum aktif uyarilari kapat", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                threatStore.clearAllActive();
+                Toast.makeText(MainActivity.this, "Aktif uyarilar kapatildi", Toast.LENGTH_SHORT).show();
+                render();
+            }
+        }));
         root.addView(secondaryButton("Uyumlu internet modu", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -143,16 +148,28 @@ public class MainActivity extends Activity {
         }));
 
         addSection("Son tehditler");
-        List<ThreatEvent> events = threatStore.list();
-        if (events.isEmpty()) {
+        if (activeEvents.isEmpty()) {
             root.addView(card("Aktif olay yok", "Bildirim geldiginde dokununca ilgili mudahale ekranina acilir."));
         } else {
             int count = 0;
-            for (ThreatEvent event : events) {
+            for (ThreatEvent event : activeEvents) {
                 if (count++ >= 5) {
                     break;
                 }
                 root.addView(threatPanel(event, false));
+            }
+        }
+
+        addSection("Son kararlar");
+        if (historyEvents.isEmpty()) {
+            root.addView(card("Gecmis karar yok", "Engellenen, karantinaya alinan veya guvenli sayilan olaylar burada kisa sure gorunur."));
+        } else {
+            int count = 0;
+            for (ThreatEvent event : historyEvents) {
+                if (count++ >= 3) {
+                    break;
+                }
+                root.addView(card(event.title, readableStatus(event.status) + " | " + event.target));
             }
         }
 
@@ -352,6 +369,10 @@ public class MainActivity extends Activity {
         if ("temporary_blocked".equals(status)) return "gecici engelli";
         if ("allowed".equals(status)) return "guvenli";
         if ("remove_requested".equals(status)) return "kaldirma istendi";
+        if ("filtered".equals(status)) return "sistem olayi filtrelendi";
+        if ("superseded".equals(status)) return "tekrar eden olay kapatildi";
+        if ("archived".equals(status)) return "arsivlendi";
+        if ("dismissed".equals(status)) return "kapatildi";
         return "mudahale bekliyor";
     }
 
