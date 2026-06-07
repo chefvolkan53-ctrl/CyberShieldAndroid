@@ -1,13 +1,13 @@
 {
   "catalog": null,
-  "created_at": "2026-06-07T22:44:04.014339Z",
+  "created_at": "2026-06-07T22:53:24.440254Z",
   "feeds": [
     {
       "id": "threat_intel",
-      "sha256": "9ef4850e0191d25e09da8976ae0738767a16f21c043b6f5a57e4662637f390b9",
-      "signature": "MEYCIQCKtwqUEXlp8/Jmvoq+OP9p1Tzz/fVLTzj5PJvjCisQvQIhAKrkoJZsuKqbwnz1DG88KJjwntMlMa+bdQvBXl2QfbuJ",
+      "sha256": "58d7dad300911644a5b7ecc6747e2c721d0b1fd75737b75cdb6d6c151ec2c3c9",
+      "signature": "MEYCIQDzKFnmP97Hl4cbibVCpfUdeZl+XHvkYp871ruk2lzy/wIhAO9bYsIoVg57nQGCLAY5c2U660QSNPi04DjnnNqsO/9N",
       "url": "https://raw.githubusercontent.com/chefvolkan53-ctrl/CyberShieldAndroid/main/security-updates/threat_intel.json",
-      "version": "2026.06.07.2243"
+      "version": "2026.06.07.2253"
     }
   ],
   "metadata": [],
@@ -15,5 +15,5 @@
   "models": [],
   "schema": 1,
   "thresholds": [],
-  "version": "2026.06.07.2243"
+  "version": "2026.06.07.2253"
 }
