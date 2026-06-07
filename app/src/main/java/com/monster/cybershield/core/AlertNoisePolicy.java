@@ -83,6 +83,9 @@ public final class AlertNoisePolicy {
         if (host.isEmpty()) {
             return true;
         }
+        if (isRoutineTimeSyncFlow(flow) && !isAbusiveFlow(flow)) {
+            return true;
+        }
         if (isTrustedNetworkTarget(flow.target()) && !isAbusiveFlow(flow)) {
             return true;
         }
@@ -351,7 +354,8 @@ public final class AlertNoisePolicy {
     }
 
     private static boolean isRoutineInfrastructure(String host, int port) {
-        return port == 853
+        return port == 123
+                || port == 853
                 || port == 5228
                 || port == 5229
                 || port == 5230
@@ -501,8 +505,13 @@ public final class AlertNoisePolicy {
     }
 
     private static boolean isEphemeralOrConsumerPort(int port) {
-        return port <= 0 || port == 80 || port == 443 || port == 853 || port == 3478 || port == 3479 || port == 3480
+        return port <= 0 || port == 80 || port == 123 || port == 443 || port == 853 || port == 3478 || port == 3479 || port == 3480
                 || port == 5222 || port == 5223 || port == 5228 || port == 5229 || port == 5230 || port >= 1024;
+    }
+
+    private static boolean isRoutineTimeSyncFlow(FlowStats flow) {
+        int port = flow.key.destinationPort;
+        return port == 123 && flow.key.protocol == 17 && flow.packetCount < 64 && flow.byteCount < 8192;
     }
 
     private static boolean isAbusiveFlow(FlowStats flow) {
