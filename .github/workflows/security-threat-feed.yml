@@ -5,6 +5,10 @@ on:
     - cron: "17 02 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: security-threat-feed-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -62,5 +66,6 @@ jobs:
             echo "No threat intelligence changes."
           else
             git commit -m "Update CyberShield threat intelligence feed"
+            git pull --rebase origin "${GITHUB_REF_NAME:-main}"
             git push
           fi
