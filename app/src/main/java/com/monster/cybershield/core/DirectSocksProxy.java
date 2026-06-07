@@ -1,0 +1,389 @@
+package com.monster.cybershield.core;
+
+import android.net.VpnService;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+
+public final class DirectSocksProxy implements AutoCloseable {
+    private final VpnService vpnService;
+    private final BlocklistStore blocklist;
+    private final int port;
+    private final ExecutorService workers = Executors.newCachedThreadPool();
+    private volatile boolean running;
+    private ServerSocket serverSocket;
+    private Thread acceptThread;
+
+    public DirectSocksProxy(VpnService vpnService, int port) {
+        this.vpnService = vpnService;
+        this.blocklist = new BlocklistStore(vpnService);
+        this.port = port;
+    }
+
+    public synchronized void start() throws IOException {
+        if (running) {
+            return;
+        }
+        serverSocket = new ServerSocket();
+        serverSocket.setReuseAddress(true);
+        serverSocket.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+        running = true;
+        acceptThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                acceptLoop();
+            }
+        }, "cybershield-socks-accept");
+        acceptThread.start();
+    }
+
+    private void acceptLoop() {
+        while (running) {
+            try {
+                final Socket client = serverSocket.accept();
+                workers.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        handleClient(client);
+                    }
+                });
+            } catch (IOException ignored) {
+                if (!running) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private void handleClient(Socket client) {
+        try (Socket local = client) {
+            local.setTcpNoDelay(true);
+            InputStream input = local.getInputStream();
+            OutputStream output = local.getOutputStream();
+            if (!readGreeting(input, output)) {
+                return;
+            }
+            Request request = readRequest(input);
+            if (request == null || isBlocked(request.host, request.port)) {
+                writeFailure(output, 0x02);
+                return;
+            }
+            if (request.command == 0x01) {
+                handleConnect(local, input, output, request);
+            } else if (request.command == 0x03) {
+                handleUdpAssociate(local, output);
+            } else {
+                writeFailure(output, 0x07);
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private boolean readGreeting(InputStream input, OutputStream output) throws IOException {
+        int version = input.read();
+        int methods = input.read();
+        if (version != 0x05 || methods <= 0) {
+            return false;
+        }
+        skipFully(input, methods);
+        output.write(new byte[]{0x05, 0x00});
+        output.flush();
+        return true;
+    }
+
+    private Request readRequest(InputStream input) throws IOException {
+        int version = input.read();
+        int command = input.read();
+        input.read();
+        int atyp = input.read();
+        if (version != 0x05) {
+            return null;
+        }
+        String host;
+        if (atyp == 0x01) {
+            byte[] address = readFully(input, 4);
+            host = (address[0] & 0xFF) + "." + (address[1] & 0xFF) + "." + (address[2] & 0xFF) + "." + (address[3] & 0xFF);
+        } else if (atyp == 0x03) {
+            int len = input.read();
+            host = new String(readFully(input, len), StandardCharsets.UTF_8);
+        } else if (atyp == 0x04) {
+            byte[] address = readFully(input, 16);
+            host = InetAddress.getByAddress(address).getHostAddress();
+        } else {
+            return null;
+        }
+        int port = ((input.read() & 0xFF) << 8) | (input.read() & 0xFF);
+        return new Request(command, host, port);
+    }
+
+    private void handleConnect(Socket client, InputStream clientInput, OutputStream clientOutput, Request request) throws IOException {
+        Socket remote = new Socket();
+        vpnService.protect(remote);
+        try {
+            remote.connect(new InetSocketAddress(request.host, request.port), 12_000);
+        } catch (IOException e) {
+            writeFailure(clientOutput, 0x05);
+            closeQuietly(remote);
+            return;
+        }
+        clientOutput.write(successReply("127.0.0.1", port));
+        clientOutput.flush();
+        final Socket remoteSocket = remote;
+        workers.execute(new Runnable() {
+            @Override
+            public void run() {
+                pipe(clientInput, remoteSocket);
+            }
+        });
+        pipe(remoteSocket, client);
+    }
+
+    private void handleUdpAssociate(Socket control, OutputStream output) throws IOException {
+        final DatagramSocket clientSocket = new DatagramSocket(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0));
+        final DatagramSocket remoteSocket = new DatagramSocket();
+        final AtomicReference<SocketAddress> clientAddress = new AtomicReference<>();
+        vpnService.protect(remoteSocket);
+        output.write(successReply("127.0.0.1", clientSocket.getLocalPort()));
+        output.flush();
+        workers.execute(new Runnable() {
+            @Override
+            public void run() {
+                udpClientToRemote(clientSocket, remoteSocket, clientAddress);
+            }
+        });
+        workers.execute(new Runnable() {
+            @Override
+            public void run() {
+                udpRemoteToClient(clientSocket, remoteSocket, clientAddress);
+            }
+        });
+        try {
+            while (running && !control.isClosed() && control.getInputStream().read() >= 0) {
+            }
+        } catch (IOException ignored) {
+        } finally {
+            clientSocket.close();
+            remoteSocket.close();
+        }
+    }
+
+    private void udpClientToRemote(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress) {
+        byte[] buffer = new byte[65535];
+        while (running && !clientSocket.isClosed()) {
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                clientSocket.receive(packet);
+                clientAddress.set(packet.getSocketAddress());
+                UdpRequest request = parseUdpRequest(packet);
+                if (request == null || isBlocked(request.host, request.port)) {
+                    continue;
+                }
+                DatagramPacket out = new DatagramPacket(request.payload, request.payload.length, InetAddress.getByName(request.host), request.port);
+                remoteSocket.send(out);
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private void udpRemoteToClient(DatagramSocket clientSocket, DatagramSocket remoteSocket, AtomicReference<SocketAddress> clientAddress) {
+        byte[] buffer = new byte[65535];
+        while (running && !remoteSocket.isClosed()) {
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                remoteSocket.receive(packet);
+                SocketAddress target = clientAddress.get();
+                if (target == null) {
+                    continue;
+                }
+                byte[] response = wrapUdpResponse(packet);
+                DatagramPacket out = new DatagramPacket(response, response.length, target);
+                clientSocket.send(out);
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private UdpRequest parseUdpRequest(DatagramPacket packet) throws IOException {
+        byte[] data = packet.getData();
+        int offset = packet.getOffset();
+        int length = packet.getLength();
+        if (length < 10 || data[offset] != 0 || data[offset + 1] != 0 || data[offset + 2] != 0) {
+            return null;
+        }
+        int pos = offset + 3;
+        int atyp = data[pos++] & 0xFF;
+        String host;
+        if (atyp == 0x01) {
+            host = (data[pos] & 0xFF) + "." + (data[pos + 1] & 0xFF) + "." + (data[pos + 2] & 0xFF) + "." + (data[pos + 3] & 0xFF);
+            pos += 4;
+        } else if (atyp == 0x03) {
+            int hostLen = data[pos++] & 0xFF;
+            host = new String(data, pos, hostLen, StandardCharsets.UTF_8);
+            pos += hostLen;
+        } else {
+            return null;
+        }
+        int targetPort = ((data[pos++] & 0xFF) << 8) | (data[pos++] & 0xFF);
+        byte[] payload = new byte[offset + length - pos];
+        System.arraycopy(data, pos, payload, 0, payload.length);
+        return new UdpRequest(host, targetPort, payload);
+    }
+
+    private byte[] wrapUdpResponse(DatagramPacket packet) {
+        byte[] address = packet.getAddress().getAddress();
+        int atyp = address.length == 4 ? 0x01 : 0x04;
+        byte[] payload = packet.getData();
+        int payloadOffset = packet.getOffset();
+        int payloadLength = packet.getLength();
+        byte[] out = new byte[3 + 1 + address.length + 2 + payloadLength];
+        int pos = 0;
+        out[pos++] = 0;
+        out[pos++] = 0;
+        out[pos++] = 0;
+        out[pos++] = (byte) atyp;
+        System.arraycopy(address, 0, out, pos, address.length);
+        pos += address.length;
+        out[pos++] = (byte) ((packet.getPort() >> 8) & 0xFF);
+        out[pos++] = (byte) (packet.getPort() & 0xFF);
+        System.arraycopy(payload, payloadOffset, out, pos, payloadLength);
+        return out;
+    }
+
+    private boolean isBlocked(String host, int targetPort) {
+        String normalized = host == null ? "" : host.toLowerCase(Locale.US);
+        return blocklist.isBlocked(normalized)
+                || blocklist.isBlocked(normalized + ":" + targetPort);
+    }
+
+    private byte[] successReply(String host, int bindPort) throws IOException {
+        byte[] address = InetAddress.getByName(host).getAddress();
+        byte[] reply = new byte[10];
+        reply[0] = 0x05;
+        reply[1] = 0x00;
+        reply[2] = 0x00;
+        reply[3] = 0x01;
+        System.arraycopy(address, 0, reply, 4, 4);
+        reply[8] = (byte) ((bindPort >> 8) & 0xFF);
+        reply[9] = (byte) (bindPort & 0xFF);
+        return reply;
+    }
+
+    private void writeFailure(OutputStream output, int code) throws IOException {
+        output.write(new byte[]{0x05, (byte) code, 0x00, 0x01, 0, 0, 0, 0, 0, 0});
+        output.flush();
+    }
+
+    private void pipe(InputStream input, Socket outputSocket) {
+        try {
+            OutputStream output = outputSocket.getOutputStream();
+            byte[] buffer = new byte[32 * 1024];
+            int read;
+            while ((read = input.read(buffer)) >= 0) {
+                output.write(buffer, 0, read);
+                output.flush();
+            }
+        } catch (IOException ignored) {
+        } finally {
+            closeQuietly(outputSocket);
+        }
+    }
+
+    private void pipe(Socket inputSocket, Socket outputSocket) {
+        try {
+            InputStream input = inputSocket.getInputStream();
+            OutputStream output = outputSocket.getOutputStream();
+            byte[] buffer = new byte[32 * 1024];
+            int read;
+            while ((read = input.read(buffer)) >= 0) {
+                output.write(buffer, 0, read);
+                output.flush();
+            }
+        } catch (IOException ignored) {
+        } finally {
+            closeQuietly(inputSocket);
+            closeQuietly(outputSocket);
+        }
+    }
+
+    private static byte[] readFully(InputStream input, int length) throws IOException {
+        byte[] data = new byte[length];
+        int offset = 0;
+        while (offset < length) {
+            int read = input.read(data, offset, length - offset);
+            if (read < 0) {
+                throw new IOException("unexpected eof");
+            }
+            offset += read;
+        }
+        return data;
+    }
+
+    private static void skipFully(InputStream input, int length) throws IOException {
+        while (length > 0) {
+            long skipped = input.skip(length);
+            if (skipped <= 0) {
+                if (input.read() < 0) {
+                    throw new IOException("unexpected eof");
+                }
+                skipped = 1;
+            }
+            length -= skipped;
+        }
+    }
+
+    private static void closeQuietly(Socket socket) {
+        try {
+            socket.close();
+        } catch (IOException ignored) {
+        }
+    }
+
+    @Override
+    public synchronized void close() {
+        running = false;
+        try {
+            if (serverSocket != null) {
+                serverSocket.close();
+            }
+        } catch (IOException ignored) {
+        }
+        workers.shutdownNow();
+    }
+
+    private static final class Request {
+        final int command;
+        final String host;
+        final int port;
+
+        Request(int command, String host, int port) {
+            this.command = command;
+            this.host = host;
+            this.port = port;
+        }
+    }
+
+    private static final class UdpRequest {
+        final String host;
+        final int port;
+        final byte[] payload;
+
+        UdpRequest(String host, int port, byte[] payload) {
+            this.host = host;
+            this.port = port;
+            this.payload = payload;
+        }
+    }
+}

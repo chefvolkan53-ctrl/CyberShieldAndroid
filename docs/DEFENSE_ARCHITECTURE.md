@@ -19,7 +19,7 @@ Oncelikler:
 | SMS | `SmsThreatReceiver` | Social text, URL, phishing |
 | Paylasilan link/metin | `LinkScanActivity` | Social URL, social text, phishing |
 | APK kurulumu/degisimi | `PackageThreatReceiver` | Android malware |
-| VPN paketleri | `DefenseVpnService` | DNS, DoH L1/L2, Network, IoT, TLS/PQC |
+| VPN paketleri | `DefenseVpnService` + native forwarder | DNS, DoH L1/L2, Network, IoT, TLS/PQC |
 | Flow istatistikleri | `FlowTracker` | Network 79, IoT 71, anomaly/PQC |
 
 ## Karar akisi
@@ -45,16 +45,35 @@ Oncelikler:
 Mevcut VPN servisinde:
 
 - TUN arayuzu acilir.
+- Native kutuphane varsa `0.0.0.0/0` tam cihaz rotasi acilir.
+- `libcybershield_forwarder.so` TUN paketlerini kullanici-uzayi tun2socks motoruna alir.
+- `DirectSocksProxy` temiz TCP/UDP akislarini internete iletir.
+- Outbound soketler `VpnService.protect()` ile VPN dongusune sokulmaz.
 - IPv4, TCP, UDP ve DNS paketleri parse edilir.
 - DNS/DoH tespitleri modele verilir.
 - Flow bazli paket/byte/sure/flag istatistikleri tutulur.
-- Blok listeye dusen hedefler analiz/mudahale tarafinda engelleme politikasina alinir.
+- Blok listeye dusen domain/IP/port hedefleri SOCKS koprusunde dusurulur.
 
-Tam uretim seviyesi internet yonlendirme icin eksik native parca:
+```mermaid
+flowchart TD
+    Apps["Phone apps"] --> AndroidVpn["Android VpnService"]
+    AndroidVpn --> Tun["TUN fd / 10.88.0.2"]
+    Tun --> Native["libcybershield_forwarder.so"]
+    Native --> Socks["DirectSocksProxy 127.0.0.1:10808"]
+    Socks --> Policy["Blocklist / allowlist policy"]
+    Policy -->|allowed| Protect["VpnService.protect(socket)"]
+    Policy -->|blocked| Drop["Drop flow"]
+    Protect --> Internet["Wi-Fi / mobile internet"]
+    AndroidVpn --> Parser["Packet parser / FlowTracker"]
+    Parser --> Models["TFLite DNS / DoH / Network / IoT / TLS models"]
+    Models --> Intervention["Notification + intervention screen"]
+```
 
-- `0.0.0.0/0` route.
-- TUN'dan internete TCP/UDP forwarding.
-- NAT/session mapping.
-- Native `tun2socks` veya esdeger kullanici-uzayi TCP/IP stack.
+Native motor yoksa veya baslatilamazsa:
 
-Bu katman eklendiginde mevcut model/politika motoru domain/IP/port bazli gercek bloklamayi uretim seviyesinde uygulayabilir.
+- Uygulama tam rota acmaz.
+- Guvenli telemetri rotalarina geri duser.
+- Telefonun internetini bozmaz.
+- Saha test ekraninda mod `safe_telemetry_routes` olarak gorunur.
+
+Native motor basarili oldugunda saha test ekraninda mod `full_device_forwarding` olarak gorunur. Galaxy A56 testinde native kutuphane yuklendi, `tun0` aktif oldu ve TCP 443 baglanti testi basarili sonuc verdi. ICMP/ping tun2socks tarafindan tasinmadigi icin desteklenmez.

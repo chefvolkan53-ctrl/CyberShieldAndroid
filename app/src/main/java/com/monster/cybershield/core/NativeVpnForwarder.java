@@ -21,20 +21,30 @@ public final class NativeVpnForwarder {
         return AVAILABLE;
     }
 
-    public static int start(int tunFd, int mtu) {
+    public static int start(String configPath, int tunFd, int mtu) {
         if (!AVAILABLE) {
             return -1;
         }
-        return nativeStart(tunFd, mtu);
+        TProxyStartService(configPath, tunFd);
+        return 0;
     }
 
     public static void stop() {
         if (AVAILABLE) {
-            nativeStop();
+            TProxyStopService();
         }
     }
 
-    private static native int nativeStart(int tunFd, int mtu);
+    public static long[] stats() {
+        if (!AVAILABLE) {
+            return new long[]{0L, 0L, 0L, 0L};
+        }
+        return TProxyGetStats();
+    }
 
-    private static native void nativeStop();
+    private static native void TProxyStartService(String configPath, int tunFd);
+
+    private static native void TProxyStopService();
+
+    private static native long[] TProxyGetStats();
 }

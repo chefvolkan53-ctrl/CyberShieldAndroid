@@ -21,6 +21,8 @@ CyberShield otomatik calisan, kullanici onayli mudahale yapan moduler bir Androi
 - `PackageThreatReceiver`: gercek APK kurulum/degisim broadcast'i geldiginde Android malware modelini tetikler.
 - Android malware 9503 feature uretimi paket adi hash'i ile sinirli degil; manifest izinleri, activity/service/receiver/provider sayilari, debuggable/system flag'leri, cleartext flag'i ve supheli izin gruplari modele verilir.
 - `DefenseVpnService`: VPN TUN paketlerini okur, IPv4/UDP/TCP/DNS parser ile DNS/DoH modellerine ve flow tabanli Network/IoT/TLS/PQC analizine baglar, blok/whitelist politikasini uygular.
+- `libcybershield_forwarder.so`: arm64-v8a native tun2socks motoru olarak paketlenir; VPN izni verildiginde tam cihaz rotasini TCP/UDP forwarding ile internete tasir.
+- `DirectSocksProxy`: native motorun yerel SOCKS cikisini karsilar, `VpnService.protect()` ile donguye girmeyen outbound soket acar ve blok listedeki domain/IP/port akislarini dusurur.
 - `SourceFieldTestActivity`: ADB ile cagrilabilen gizli saha testi; SMS izni, APK receiver, link scanner, VPN izin durumu ve 9503 APK feature uretimini raporlar.
 - `PolicyInterventionModel`: CyberShield policy TFLite modelini yukler; olay tipi, kaynak, risk ve hedef sinyallerinden profesyonel mudahale onerisi uretir.
 - `PolicyAssistantText`: ham aksiyon adlarini kullaniciya anlamli guvenlik diline cevirir; bildirim ve mudahale ekraninda gerekce, etki ve geri alma bilgisini gosterir.
@@ -42,9 +44,9 @@ Android, kullanici onayi olmadan baska uygulamalari silemez veya tum agi sessizc
 
 ## Uretim siniri
 
-Android'de tum TCP/UDP trafigini interneti bozmadan 0.0.0.0/0 VPN uzerinden gecirmek icin kullanici-uzayi TCP/IP forwarding veya native `tun2socks` katmani gerekir. Projede `NativeVpnForwarder` koprusu hazirdir; `libcybershield_forwarder.so` paketlenirse tam rota acilir. Native kutuphane yoksa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarinda kalir.
+Android'de tum TCP/UDP trafigini interneti bozmadan 0.0.0.0/0 VPN uzerinden gecirmek icin kullanici-uzayi TCP/IP forwarding veya native `tun2socks` katmani gerekir. Bu surumde arm64-v8a icin `libcybershield_forwarder.so` paketlendi ve Galaxy A56 uzerinde `full_device_forwarding` modu dogrulandi.
 
-Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan once forwarding katmani tamamlanmalidir.
+Native motor yuklenemez veya baslatilamazsa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarina geri duser. ICMP/ping forwarding desteklenmez; gercek dogrulama TCP/UDP trafikle yapilir.
 
 ## Son guncelleme
 
@@ -54,7 +56,7 @@ Mevcut VPN rotalari test/guvenli modda tutulur. Tum internet rotasi acilmadan on
 - Network/IoT feature cikarimi CICFlowMeter tarzina daha yakin hale getirildi.
 - Android APK feature cikarimi zip/dex/native lib/string sinyalleriyle guclendirildi.
 - Kalibrasyon aktivitesi ve kalici threshold store eklendi.
-- Native VPN forwarding koprusu eklendi; native kutuphane yoksa full-route yerine guvenli mod kullanilir.
+- Native VPN forwarding arm64-v8a icin paketlendi; tam cihaz rotasi, yerel SOCKS koprusu, `VpnService.protect()` ve guvenli fallback akisi eklendi.
 - TensorFlow Lite runtime `2.17.0` surumune cikarildi.
 - Bildirimlerde ham "uyar" gibi ifadeler yerine profesyonel mudahale aciklamasi, risk gerekcesi ve geri alma bilgisi kullanilir.
 - MITM/ARP model skorlari sentetik/heuristic bootstrap veri setinden gelir; gercek lab trafiyle yeniden kalibrasyon onerilir.

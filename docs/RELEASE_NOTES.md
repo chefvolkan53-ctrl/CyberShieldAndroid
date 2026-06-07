@@ -15,14 +15,19 @@
 - Onboarding ekrani: bildirim, SMS, VPN, pil optimizasyonu ve Samsung arka plan ayarlari.
 - Self-test ve saha test aktiviteleri eklendi.
 - Profesyonel launcher/adaptive icon eklendi.
+- arm64-v8a `libcybershield_forwarder.so` native tun2socks motoru paketlendi.
+- `DirectSocksProxy` ile yerel SOCKS cikisi, `VpnService.protect()` ve domain/IP/port bloklama hattı eklendi.
+- Native motor basariliysa `0.0.0.0/0` tam cihaz rotasi, basarisizsa guvenli telemetri fallback modu uygulanir.
 
 ### Dogrulama
 
 - Samsung Galaxy A56 uzerinde release APK kuruldu.
-- TFLite self-test sonucu: 14/14 model OK.
+- TFLite self-test sonucu: 17/17 model OK.
 - SMS ve bildirim izinleri granted.
 - Link scanner uyarisi bildirim ve mudahale aksiyonlariyla dogrulandi.
+- Galaxy A56 saha testinde `Native VPN forwarding kutuphanesi: true` ve `VPN modu: full_device_forwarding` dogrulandi.
+- `tun0` aktif goruldu ve TCP 443 baglanti testi basarili oldu. ICMP/ping tun2socks tarafindan tasinmadigi icin beklenen sekilde basarisizdir.
 
 ### Bilinen uretim notu
 
-Tam internet forwarding icin native `tun2socks`/NAT katmani gerekir. Mevcut surum TUN okuma, parser, flow feature, model ve politika motorunu hazirlar; native forwarding eklendiginde tam VPN bloklama uretim seviyesine tasinir.
+Tam internet forwarding arm64-v8a icin paketlendi. Diger ABI'ler icin native `.so` eklenmedikce uygulama guvenli telemetri moduna geri duser.

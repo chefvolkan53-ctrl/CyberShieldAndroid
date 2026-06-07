@@ -13,6 +13,7 @@ CyberShield Android, Samsung Galaxy A56 gibi orta sinif cihazlarda dusuk pil/RAM
 - CyberShield Policy Assistant modeli, tespit edilen olaya gore profesyonel mudahale onerisi, gerekce, etki ve geri alma bilgisini uretir.
 - Model yukleme olay bazlidir; pil/performans icin ayni anda sicak tutulan model sayisi sinirlanir.
 - Blok liste, gecici blok, whitelist ve son karari geri alma politikasi vardir.
+- arm64-v8a native tun2socks forwarding motoru paketlidir; VPN izni verildiginde `0.0.0.0/0` tam cihaz rotasi acilir ve TCP/UDP trafik yerel SOCKS koprusu uzerinden internete iletilir.
 - Network/IoT feature uretimi, yon bazli flow istatistikleri, TCP flag/window, TTL, IAT, active/idle ve payload/header sinyalleriyle CICFlowMeter tarzina yaklastirildi.
 - APK feature uretimi, kurulu APK zip yapisi, dex/native lib/asset/suspicious entry sayilari ve sinirli statik string sinyalleriyle genisletildi.
 - Model esikleri saha/lab testlerinden sonra `CalibrationActivity` ile kalici olarak kalibre edilebilir.
@@ -69,7 +70,11 @@ flowchart LR
     SMS[SMS Receiver] --> Engine[ThreatEngine]
     URL[Link Scanner] --> Engine
     APK[Package Receiver] --> Engine
-    VPN[Defense VPN Parser] --> Flow[FlowTracker]
+    VPN[Defense VPN Service] --> TUN[TUN 0.0.0.0/0]
+    TUN --> Native[libcybershield_forwarder.so]
+    Native --> SOCKS[DirectSocksProxy + VpnService.protect]
+    SOCKS --> NET[Wi-Fi / Mobile Internet]
+    VPN --> Flow[FlowTracker]
     VPN --> Engine
     Flow --> Engine
     ARP[MITM/ARP Monitor] --> Engine
@@ -88,6 +93,7 @@ flowchart LR
 - Domain/IP/port hedefleri blok/whitelist politikasina yazilir.
 - Bildirimdeki aksiyonlar olay detayina dogrudan gider.
 - VPN izni verildiginde DNS/DoH ve flow analizi TUN paketlerinden beslenir.
+- Native forwarding modunda temiz TCP/UDP akislar internete iletilir; blok listedeki domain/IP/port hedefleri yerel SOCKS koprusunde dusurulur.
 - MITM/ARP olaylarinda gateway kimligi, ARP tablo tutarliligi ve model risk puani birlikte degerlendirilir; supheli Wi-Fi agi isaretleme, VPN korumasini zorunlu onerme ve gecici blok aksiyonlari desteklenir.
 
 ## Android uygulama durumu
@@ -102,9 +108,17 @@ flowchart LR
 
 ## VPN ve Uretim Notu
 
-Tam `0.0.0.0/0` internet forwarding icin native `tun2socks` veya esdeger kullanici-uzayi TCP/IP forwarding katmani gerekir. Projede `NativeVpnForwarder` koprusu hazirdir: `libcybershield_forwarder.so` saglanirsa tam cihaz rotasi acilir; native kutuphane yoksa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarinda kalir.
+`app/src/main/jniLibs/arm64-v8a/libcybershield_forwarder.so` arm64 cihazlar icin paketlenmistir. `DefenseVpnService`, VPN izni verildiginde tam cihaz rotasi (`0.0.0.0/0`) acar, native tun2socks motorunu cache altinda uretilen config ile baslatir ve temiz TCP/UDP akislarini `DirectSocksProxy` uzerinden telefonun gercek Wi-Fi/mobil internetine iletir. Outbound soketler `VpnService.protect()` ile VPN dongusune sokulmaz.
 
-Mevcut projede TUN okuma, packet parser, flow feature uretimi, model baglantisi, blok/whitelist politikasi, kalibrasyon altyapisi ve native forwarder koprusu hazirdir. Tam uretim VPN modu icin guvenilir native forwarding kutuphanesi paketlenmelidir.
+Native kutuphane yuklenemez veya motor baslatilamazsa uygulama telefonu internetsiz birakmamak icin guvenli telemetri rotalarina geri duser. ICMP/ping forwarding desteklenmez; dogrulama TCP/UDP uzerinden yapilir.
+
+Samsung Galaxy A56 testinde:
+
+- `Native VPN forwarding kutuphanesi: true`
+- `VPN modu: full_device_forwarding`
+- `tun0` aktif
+- TCP 443 baglanti testi basarili
+- ICMP ping beklenen sekilde basarisiz
 
 ## Derleme
 
