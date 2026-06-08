@@ -2,18 +2,14 @@
 
 ## Applied
 
-- Release signing no longer uses Android debug keystore.
-- Release signing is read from environment variables or `~/.android/cybershield-release.properties`.
-- Release build enables R8 minification and resource shrinking.
-- Test/diagnostic activities are no longer exported:
-  - `SelfTestActivity`
-  - `AttackSimulationActivity`
-  - `SourceFieldTestActivity`
-  - `CalibrationActivity`
-- App-owned cleartext traffic is disabled through `network_security_config`.
-- VPN sockets are protected from VPN loops in `DirectSocksProxy`.
-- Full VPN forwarding traffic is mirrored into `ThreatEngine` through `ProxyTrafficMirror`.
-- `FeatureSchema` no longer injects synthetic hash noise into unknown network feature columns.
+- Release signing no longer uses the Android debug keystore.
+- Release signing is supplied from owner-controlled local or CI secrets.
+- Release builds enable code and resource shrinking.
+- Diagnostic and laboratory screens are not exported in production.
+- App-owned cleartext traffic is disabled through network security configuration.
+- VPN traffic handling avoids local routing loops.
+- Full protection mode mirrors relevant flow metadata into the threat engine.
+- Unknown network feature handling avoids synthetic noise that could distort model input.
 
 ## Release Signing Configuration
 
@@ -26,13 +22,7 @@ CYBERSHIELD_KEY_ALIAS
 CYBERSHIELD_KEY_PASSWORD
 ```
 
-Local fallback:
-
-```text
-%USERPROFILE%\.android\cybershield-release.properties
-```
-
-The local fallback file must not be committed.
+Local signing files and keystores must never be committed.
 
 ## Production Build
 
@@ -44,9 +34,13 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 
 ## Remaining Hardening Before Public Distribution
 
-- Run AMTSO Android feature checks and attach screenshots/results.
-- Run at least one 24-hour stability pass on the target Samsung device.
-- Run local false-positive tests for benign URLs, SMS texts, and APKs.
-- Add privacy review for notification text and stored event contents.
-- Consider Play Integrity / app integrity checks if distributing publicly.
-- Consider root/tamper detection as advisory signals only, not as hard blockers.
+- Run AMTSO Android feature checks and attach screenshots/results privately.
+- Run long-duration stability and battery impact tests on target devices.
+- Run false-positive tests for benign URLs, SMS texts, APKs and routine network traffic.
+- Review notification text and stored event contents for privacy.
+- Consider Play Integrity and app integrity checks for public distribution.
+- Consider root/tamper detection as advisory signals only, not hard blockers.
+
+## Public Documentation Rule
+
+Production hardening docs should not expose exact test activity names, local file paths, model thresholds, feature maps or bypass-oriented exception lists.

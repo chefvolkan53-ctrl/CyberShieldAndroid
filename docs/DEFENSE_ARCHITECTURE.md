@@ -1,93 +1,50 @@
-# CyberShield Defense Architecture
+# CyberShield Public Defense Architecture
 
-## Tasarim hedefleri
+## Tasarim Hedefleri
 
-CyberShield, manuel laboratuvar araci olarak degil, arka planda otomatik calisan ve kritik aksiyonlarda kullanici onayi isteyen profesyonel bir savunma uygulamasi olarak tasarlanmistir.
+CyberShield, manuel laboratuvar araci yerine arka planda calisan ve hassas aksiyonlarda kullanici onayi isteyen bir Android savunma uygulamasi olarak tasarlanmistir.
 
 Oncelikler:
 
 - Dusuk pil, RAM ve CPU kullanimi.
-- Offline TFLite inference.
-- Kaynak bazli model calistirma.
+- Cihaz uzerinde offline TFLite inference.
+- Olay bazli model calistirma.
 - Bildirimden dogrudan mudahale ekranina gecis.
-- Engelleme/karantina/guvenli sayma kararlarinin geri alinabilir olmasi.
+- Geri alinabilir engelleme, karantina ve guvenli sayma kararları.
 
-## Kaynak baglayicilari
+## Kaynak Katmanlari
 
-| Kaynak | Android bileseni | Model hattı |
-| --- | --- | --- |
-| SMS | `SmsThreatReceiver` | Social text, URL, phishing |
-| Paylasilan link/metin | `LinkScanActivity` | Social URL, social text, phishing |
-| APK kurulumu/degisimi | `PackageThreatReceiver` | Android malware |
-| VPN paketleri | `DefenseVpnService` + native forwarder | DNS, DoH L1/L2, Network, Android malware flow, IoT, TLS/PQC |
-| Flow istatistikleri | `FlowTracker` | Network 79, Android malware flow 80, IoT 71, anomaly/PQC |
-| Wi-Fi baglam sinyalleri | `WifiThreatMonitor` | Wi-Fi Threat 48, MITM/ARP 32 |
+CyberShield asagidaki kaynaklardan sinyal alir:
 
-## Karar akisi
+- SMS ve metin icerikleri
+- Paylasilan veya acilan linkler
+- APK kurulum/degisim olaylari
+- Android VPN uzerinden ag ve DNS sinyalleri
+- Wi-Fi baglam ve baglanti guvenligi sinyalleri
+- Threat-intelligence destek verileri
 
-1. Kaynak bileseni sinyali yakalar.
-2. `FeatureExtractor` ve `FeatureSchema` modelin bekledigi boyutta feature uretir.
-3. `ThreatEngine` ilgili TFLite modelini olay bazli yukler.
-4. Model skoru `model_catalog.json` icindeki esik ve politika ile karsilastirilir.
-5. Aksiyon gerekiyorsa `CyberDefenseService` mudahale bildirimi uretir.
-6. Bildirime tiklaninca `InterventionActivity` olay detayina acilir.
-7. Kullanici onayina gore blok, gecici blok, karantina, guvenli sayma veya kaldirma intent'i uygulanir.
-
-## Politika ve guvenlik
-
-- Destructive islem kullanici onaysiz uygulanmaz.
-- Kaldirma islemi Android sistem uninstall ekranina devredilir.
-- Blok/karantina hedefleri app storage icinde saklanir.
-- Whitelist karari model uyarilarini bastirabilir.
-- Son karar geri alinabilir.
-- Supheli Wi-Fi veya yuksek riskli ag olayi strict VPN koruma penceresi acar; VPN izni varsa servis otomatik baslatilir.
-
-## VPN durumu
-
-Mevcut VPN servisinde:
-
-- TUN arayuzu acilir.
-- Native kutuphane varsa `0.0.0.0/0` tam cihaz rotasi acilir.
-- `libcybershield_forwarder.so` TUN paketlerini kullanici-uzayi tun2socks motoruna alir.
-- `DirectSocksProxy` temiz TCP/UDP akislarini internete iletir.
-- Outbound soketler `VpnService.protect()` ile VPN dongusune sokulmaz.
-- IPv4, TCP, UDP ve DNS paketleri parse edilir.
-- DNS/DoH tespitleri modele verilir.
-- Flow bazli paket/byte/sure/flag istatistikleri tutulur.
-- Blok listeye dusen domain/IP/port hedefleri, URL'den normalize edilen domainler ve UDP DNS sorgu adlari SOCKS koprusunde dusurulur.
-- Strict Wi-Fi koruma modunda cleartext HTTP port 80 akislar HTTP downgrade riski olarak engellenir; allowlist bu karari hedef bazinda bypass edebilir.
-- DNS leak protection acikken UDP/TCP 53 istekleri secili resolver'a yonlendirilir. Varsayilan Cloudflare `1.1.1.1`; Quad9, Google ve AdGuard secilebilir. Bilinen DoH endpointleri strict modda sinirlanir.
+## Karar Akisi
 
 ```mermaid
 flowchart TD
-    Apps["Phone apps"] --> AndroidVpn["Android VpnService"]
-    AndroidVpn --> Tun["TUN fd / 10.88.0.2"]
-    Tun --> Native["libcybershield_forwarder.so"]
-    Native --> Socks["DirectSocksProxy 127.0.0.1:10808"]
-    Socks --> Policy["Blocklist / allowlist policy"]
-    Policy --> DnsGuard["DNS leak protection / single resolver"]
-    Policy -->|allowed| Protect["VpnService.protect(socket)"]
-    Policy -->|blocked| Drop["Drop flow"]
-    Protect --> Internet["Wi-Fi / mobile internet"]
-    AndroidVpn --> Parser["Packet parser / FlowTracker"]
-    Parser --> Models["TFLite DNS / DoH / Network / IoT / TLS models"]
-    Parser --> AndroidFlow["Android Malware Flow model"]
-    Wifi["WifiThreatMonitor"] --> Models
-    AndroidFlow --> Intervention
-    Models --> Intervention["Notification + intervention screen"]
+    Sources["Device signals"] --> Normalize["Feature normalization"]
+    Normalize --> Engine["Threat engine"]
+    Engine --> Models["Domain-specific TFLite models"]
+    Models --> Policy["Policy and risk decision"]
+    Policy --> Notify["Actionable notification"]
+    Notify --> Intervention["User-approved intervention"]
+    Intervention --> Result["Block / quarantine / allow / uninstall intent"]
 ```
 
-## Wi-Fi Threat Monitor
+## Politika ve Guvenlik
 
-`WifiThreatMonitor`, Android'in normal uygulama sinirlari icinde erisebildigi sinyallerden calisir: SSID, BSSID, RSSI, Wi-Fi guvenlik tipi, gateway IP/MAC, `/proc/net/arp`, ayni SSID icin BSSID degisimi, gateway MAC degisimi ve ARP tablo oynakligi. Model egitimi WPA3/802.11 frame CSV'lerinden yararlanir, fakat sahada ham monitor-mode deauth/beacon frame okunamaz; bu nedenle Evil Twin, deauth/disassoc ve beacon flood riskleri dolayli belirtilerle skorlanir.
+- Yikici islem kullanici onaysiz uygulanmaz.
+- Kaldirma islemi Android sistem ekranina devredilir.
+- Engelleme ve guvenli sayma kararlari geri alinabilir.
+- VPN korumasi Android VPN iznine baglidir.
+- Wi-Fi risklerinde uygulama telefonun erisebildigi Android sinyalleriyle calisir; router veya baska cihazlar uzerinde zorlayici islem yapmaz.
+- DNS ve ag korumasi, kullanici tarafindan verilen izinler ve Android platform sinirlari icinde uygulanir.
 
-Risk esigi asilinca `ProtectionPolicyStore` agi supheli olarak isaretler ve iki saatlik strict VPN koruma penceresi acar. Kullanici daha once VPN izni verdiyse CyberShield bu pencere icinde tam cihaz VPN'ini otomatik baslatir; izin yoksa bildirim dogrudan VPN onay ekranina yonlendirir.
+## Public Dokuman Siniri
 
-Native motor yoksa veya baslatilamazsa:
-
-- Uygulama tam rota acmaz.
-- Guvenli telemetri rotalarina geri duser.
-- Telefonun internetini bozmaz.
-- Saha test ekraninda mod `safe_telemetry_routes` olarak gorunur.
-
-Native motor basarili oldugunda saha test ekraninda mod `full_device_forwarding` olarak gorunur. Galaxy A56 testinde native kutuphane yuklendi, `tun0` aktif oldu ve TCP 443 baglanti testi basarili sonuc verdi. ICMP/ping tun2socks tarafindan tasinmadigi icin desteklenmez.
+Bu public mimari dokumani sinif adlari, portlar, local socket ayrintilari, tam feature haritalari, model esikleri ve bypass'a yardimci olabilecek false-positive istisnalarini icermez. Bu bilgiler private operasyonel dokumanda tutulmalidir.

@@ -4,37 +4,26 @@
 
 ### Eklenenler
 
-- 14 TFLite model Android asset olarak paketlendi.
-- Model katalog sistemi eklendi: input boyutu, esik, accuracy, recall ve mudahale politikasi merkezi JSON dosyasinda tutulur.
-- Foreground `CyberDefenseService` ile otomatik savunma servisi eklendi.
-- SMS, link/metin, APK kurulumu ve VPN paket kaynaklari modele baglandi.
-- DNS/DoH parser ve flow tabanli Network/IoT feature uretimi eklendi.
-- Android malware modeli icin 9503 boyutlu cihaz-ustu feature uretimi guclendirildi.
-- Kullanici onayli mudahale ekrani eklendi: engelle, gecici engelle, karantinaya al, guvenli say, kaldirma sistem ekranina git.
-- Blok liste, gecici blok, whitelist ve geri alma mekanizmasi eklendi.
-- Onboarding ekrani: bildirim, SMS, VPN, pil optimizasyonu ve Samsung arka plan ayarlari.
-- Self-test ve saha test aktiviteleri eklendi.
-- Profesyonel launcher/adaptive icon eklendi.
-- arm64-v8a `libcybershield_forwarder.so` native tun2socks motoru paketlendi.
-- `DirectSocksProxy` ile yerel SOCKS cikisi, `VpnService.protect()` ve domain/IP/port bloklama hattı eklendi.
-- Native motor basariliysa `0.0.0.0/0` tam cihaz rotasi, basarisizsa guvenli telemetri fallback modu uygulanir.
-- `wifi_threat_detector.tflite` eklendi; ARP Poison/flood, WPA3 SAE/downgrade, Evil Twin, deauth/disassoc, beacon flood, DNS spoofing, SSL stripping ve CIC/CAP ag CSV'lerinden 916.777 ornekle egitildi.
-- `WifiThreatMonitor` eklendi; SSID/BSSID/RSSI, gateway MAC, ARP tablo oynakligi ve Wi-Fi izinli Android sinyallerinden 48 feature uretir.
-- Telefon-ustu mudahale guclendirildi: supheli Wi-Fi strict VPN modu, otomatik VPN baslatma, DNS sorgu adi bloklama, URL-domain normalizasyonu ve HTTP downgrade engelleme eklendi.
-- DNS leak protection modu eklendi: UDP/TCP 53 tek resolver'a yonlendirilir, Private DNS icin kurulum uyarisi gosterilir ve DoH bypass endpointleri strict modda sinirlanir.
-- `android_malware_flow_detector.tflite` eklendi; CIC-AndMal2017_raw altindaki 2.131 CSV okundu, flow uyumlu 2.127 CSV'den 900.000 dengeli ornekle Android malware ag davranisi destek modeli egitildi.
+- Cihaz uzerinde calisan TFLite tabanli moduler tehdit tespit katmani.
+- Arka plan savunma servisi ve olay bazli model calistirma.
+- SMS/metin, link, APK, VPN/DNS ve Wi-Fi kaynaklarindan sinyal toplama.
+- Kullanici onayli mudahale ekrani.
+- Kalici ve gecici engelleme, karantina, guvenli sayma ve geri alma akisları.
+- DNS leak protection ve yerel VPN koruma modu.
+- Wi-Fi risk izleme ve supheli ag uyarilari.
+- Imzali online guvenlik guncellemesi altyapisi.
+- Release build hardening ve public/private secret ayrimi.
 
 ### Dogrulama
 
-- Samsung Galaxy A56 uzerinde release APK kuruldu.
-- Beklenen TFLite self-test sonucu: 19/19 model OK.
-- SMS ve bildirim izinleri granted.
-- Link scanner uyarisi bildirim ve mudahale aksiyonlariyla dogrulandi.
-- Galaxy A56 saha testinde `Native VPN forwarding kutuphanesi: true` ve `VPN modu: full_device_forwarding` dogrulandi.
-- `tun0` aktif goruldu ve TCP 443 baglanti testi basarili oldu. ICMP/ping tun2socks tarafindan tasinmadigi icin beklenen sekilde basarisizdir.
+- Release APK hedef Android cihazda kurulum ve temel calisma testinden gecirildi.
+- Cihaz uzerinde model yukleme ve inference self-testleri dogrulandi.
+- Bildirimden ilgili mudahale ekranina gecis dogrulandi.
+- DNS/VPN koruma akisi temel baglanti testleriyle kontrol edildi.
 
-### Bilinen uretim notu
+### Bilinen Platform Sinirlari
 
-Tam internet forwarding arm64-v8a icin paketlendi. Diger ABI'ler icin native `.so` eklenmedikce uygulama guvenli telemetri moduna geri duser.
-
-Wi-Fi Threat Detector veri seti icinde cok yuksek skor verir; Android normal uygulamalari ham 802.11 monitor-mode frame okuyamadigi icin sahada deauth/beacon/Evil Twin sinyalleri dolayli SSID/BSSID/RSSI/gateway/ARP belirtileriyle izlenir.
+- Android, root/MDM olmadan sessiz uygulama silme izni vermez.
+- Ag korumasi kullanici tarafindan verilen VPN iznine baglidir.
+- Wi-Fi saldiri tespiti Android'in uygulamalara sundugu sinyallerle sinirlidir.
+- Public release notes model esikleri, veri seti satir sayilari, feature boyutlari ve ic sinif adlari icermez.

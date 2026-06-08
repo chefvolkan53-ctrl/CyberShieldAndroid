@@ -5,7 +5,7 @@ CyberShield does not train models on the phone. The app downloads only tested an
 - threat intelligence feeds: malicious domains, IPs, phishing patterns, DoH endpoints, risky ports
 - TFLite model files
 - feature metadata JSON files
-- model catalog and threshold updates
+- model catalog and policy updates
 
 ## Device Rules
 
@@ -41,9 +41,9 @@ The workflow:
 6. Pushes the signed feed and manifest to a short-lived update branch.
 7. Opens a pull request into `main`, so branch protection and Code Owner review still apply before Android devices can see the new manifest.
 
-Required GitHub secret or protected environment secret:
+Required protected environment secret:
 
-- `CYBERSHIELD_UPDATE_PRIVATE_KEY`: contents of `C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem`
+- `CYBERSHIELD_UPDATE_PRIVATE_KEY`: ECDSA private signing key controlled by the repository owner
 
 Recommended location:
 
@@ -87,10 +87,10 @@ Without optional secrets, the workflow still uses sources that are reachable wit
 
 ## Manifest Package Entry
 
-Generate package hash and signature:
+Generate package hash and signature with the owner-controlled signing key:
 
 ```powershell
-java tools/SignSecurityUpdatePackage.java .\security-updates\threat_intel.json C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem
+java tools/SignSecurityUpdatePackage.java .\security-updates\threat_intel.json <private-signing-key.pem>
 ```
 
 ```json
@@ -125,11 +125,7 @@ For models, use the model id from `model_catalog.json`:
 
 The app contains only the public verification key. The private signing key was created locally and must not be committed.
 
-Local private key path:
-
-`C:\Users\Monster\Desktop\CyberShield_Update_Signing_PrivateKey_PKCS8.pem`
-
-Keep this file offline or in a secure secret store. If it leaks, rotate the public key in the app and publish a new release.
+Keep the private key offline or in a protected secret store. Do not document local private-key paths in public files. If the key leaks, rotate the public key in the app and publish a new release.
 
 GitHub hardening checklist:
 
