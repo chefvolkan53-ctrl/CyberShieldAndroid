@@ -14,6 +14,8 @@ import android.os.Environment;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.provider.MediaStore;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 
 import com.monster.cybershield.model.ThreatScore;
 
@@ -267,6 +269,9 @@ public final class ApkDownloadMonitor {
         if (!seen.add(key)) {
             return;
         }
+        if (isOwnPackageArchive(file)) {
+            return;
+        }
         Uri uri = Uri.fromFile(file);
         ThreatScore score = threatEngine.analyzeDownloadedApk(uri, file.getName(), file.getAbsolutePath());
         if (shouldQuarantine(file, score)) {
@@ -281,8 +286,11 @@ public final class ApkDownloadMonitor {
         if (score == null) {
             return false;
         }
+        if (isOwnPackageArchive(file)) {
+            return false;
+        }
         float probability = Math.max(score.risk, score.confidence);
-        return score.actionable && probability >= 0.70f;
+        return score.actionable && probability >= 0.90f && staticApkRisk(file) >= 3;
     }
 
     private void quarantineApk(File file) {
@@ -327,6 +335,55 @@ public final class ApkDownloadMonitor {
 
     private static boolean canInspectPublicDownloads() {
         return Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
+    }
+
+    private boolean isOwnPackageArchive(File file) {
+        try {
+            PackageInfo info = context.getPackageManager().getPackageArchiveInfo(file.getAbsolutePath(), 0);
+            return info != null && context.getPackageName().equals(info.packageName);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private int staticApkRisk(File file) {
+        int risk = 0;
+        try {
+            PackageInfo info = context.getPackageManager().getPackageArchiveInfo(
+                    file.getAbsolutePath(),
+                    PackageManager.GET_PERMISSIONS | PackageManager.GET_ACTIVITIES | PackageManager.GET_SERVICES | PackageManager.GET_RECEIVERS
+            );
+            if (info == null) {
+                return 1;
+            }
+            String[] permissions = info.requestedPermissions == null ? new String[0] : info.requestedPermissions;
+            for (String permission : permissions) {
+                String p = permission == null ? "" : permission.toLowerCase(Locale.US);
+                if (p.contains("read_sms") || p.contains("receive_sms") || p.contains("send_sms")) {
+                    risk += 2;
+                } else if (p.contains("bind_accessibility_service") || p.contains("system_alert_window")
+                        || p.contains("request_install_packages") || p.contains("manage_external_storage")) {
+                    risk += 2;
+                } else if (p.contains("query_all_packages") || p.contains("read_contacts") || p.contains("record_audio")) {
+                    risk += 1;
+                }
+            }
+            int componentCount = length(info.activities) + length(info.services) + length(info.receivers);
+            if (componentCount >= 24) {
+                risk += 1;
+            }
+            String name = file.getName().toLowerCase(Locale.US);
+            if (name.contains("mod") || name.contains("crack") || name.contains("hack") || name.contains("free") || name.startsWith(".")) {
+                risk += 1;
+            }
+        } catch (Exception ignored) {
+            risk += 1;
+        }
+        return risk;
+    }
+
+    private static int length(Object[] values) {
+        return values == null ? 0 : values.length;
     }
 
     private static String safe(String value) {

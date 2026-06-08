@@ -46,6 +46,9 @@ public final class ThreatIntelStore {
 
     public boolean isKnownPhishingUrl(String url) {
         String value = safe(url).toLowerCase(Locale.US);
+        if (BuiltInThreatTargets.isKnownPhishingTestUrl(value)) {
+            return true;
+        }
         if (BuiltInThreatTargets.isKnownTestThreatUrl(value)) {
             return true;
         }

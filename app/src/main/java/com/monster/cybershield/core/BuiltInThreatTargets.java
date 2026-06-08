@@ -21,6 +21,14 @@ public final class BuiltInThreatTargets {
                 || value.contains("feature-settings-check-drive-by-download-for-android-based-solutions");
     }
 
+    public static boolean isKnownPhishingTestUrl(String url) {
+        String value = safe(url).toLowerCase(Locale.US);
+        return value.contains("feature-settings-check-phishing-page-for-android-based-solutions")
+                || value.contains("check-android-phishing-page")
+                || value.contains("feature-settings-check-phishing-page")
+                || value.contains("check-desktop-phishing-page");
+    }
+
     private static String safe(String value) {
         return value == null ? "" : value.trim();
     }
