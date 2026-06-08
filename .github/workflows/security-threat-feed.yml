@@ -35,6 +35,11 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Validate model calibration gate
+        run: |
+          set -euo pipefail
+          python tools/validate_model_calibration.py --repo .
+
       - name: Build threat intelligence feed
         env:
           URLHAUS_AUTH_KEY: ${{ secrets.URLHAUS_AUTH_KEY }}

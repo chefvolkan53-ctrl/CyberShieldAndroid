@@ -41,6 +41,25 @@ Pass criteria for pre-production:
 - DNS leak test shows only the selected resolver family, not ISP DNS.
 - False positive rate is documented and reviewed before lowering thresholds.
 
+## Calibration Gate Applied
+
+CyberShield now includes `tools/validate_model_calibration.py`. This gate checks:
+
+- all 20 catalog models have a packaged TFLite asset
+- support-only models do not declare standalone hard-blocking actions
+- routing-only models do not raise direct alerts
+- field-calibration models are separated from fully primary detection models
+- near-perfect lab scores are flagged for field calibration evidence
+
+The generated status report is kept in `docs/CALIBRATION_STATUS.md`.
+
+Current calibration posture:
+
+- Primary detection models may raise user-visible interventions through the policy engine.
+- Support-only models may increase risk, explain, or corroborate another signal, but must not be used as standalone blockers.
+- Wi-Fi, MITM/ARP, IoT and post-quantum anomaly decisions require lab/field evidence before production-strength claims.
+- Independent certification is still not claimed.
+
 ## OWASP MASVS / MASA Preparation
 
 CyberShield should be reviewed against the following MASVS groups:
