@@ -73,6 +73,23 @@ public final class ThreatStore {
         return false;
     }
 
+    public boolean hasRecentModelTarget(String modelId, String target, long windowMs) {
+        String normalized = AlertNoisePolicy.normalizedTarget(target);
+        if (normalized.isEmpty()) {
+            return false;
+        }
+        long minCreatedAt = System.currentTimeMillis() - Math.max(windowMs, 1000L);
+        for (ThreatEvent event : list()) {
+            if (event.createdAt < minCreatedAt) {
+                continue;
+            }
+            if (event.modelId.equals(modelId) && normalized.equals(AlertNoisePolicy.normalizedTarget(event.target))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public List<ThreatEvent> list() {
         ArrayList<ThreatEvent> events = new ArrayList<>();
         try {

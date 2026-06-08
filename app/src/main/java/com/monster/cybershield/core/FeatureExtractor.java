@@ -10,6 +10,7 @@ import android.os.Build;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.Locale;
 import java.util.Enumeration;
@@ -232,6 +233,67 @@ public final class FeatureExtractor {
             fillHash(features, packageName, 0, features.length);
         }
         return features;
+    }
+
+    public static float[] downloadedApk(Context context, Uri uri, String label, String sourceUrl) {
+        float[] features = new float[9503];
+        String key = safe(label) + "|" + safe(sourceUrl) + "|" + String.valueOf(uri);
+        fillHash(features, key, 128, features.length);
+        features[0] = 1;
+        features[1] = 0;
+        features[2] = 0;
+        features[4] = sourceUrl != null && sourceUrl.toLowerCase(Locale.US).startsWith("http://") ? 1 : 0;
+        features[17] = safe(label).length();
+        features[18] = countChar(safe(label), '.');
+        features[19] = digitCount(safe(label));
+        features[32] = containsAny(safe(sourceUrl).toLowerCase(Locale.US), "http://", "https://");
+        features[34] = containsAny((safe(label) + " " + safe(sourceUrl)).toLowerCase(Locale.US),
+                "apk", "android", "download", "eicar", "amtso");
+        File temp = null;
+        try {
+            temp = materializeApk(context, uri);
+            if (temp != null && temp.isFile()) {
+                features[20] = temp.length() / 1024.0f;
+                addSourceApkFeatures(features, temp.getAbsolutePath());
+            }
+        } catch (Exception ignored) {
+            fillHash(features, key, 900, 1400);
+        } finally {
+            if (temp != null) {
+                temp.delete();
+            }
+        }
+        return features;
+    }
+
+    private static File materializeApk(Context context, Uri uri) throws Exception {
+        if (uri == null) {
+            return null;
+        }
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            File file = new File(safe(uri.getPath()));
+            return file.isFile() ? file : null;
+        }
+        File temp = File.createTempFile("downloaded-apk-", ".apk", context.getCacheDir());
+        try (InputStream input = context.getContentResolver().openInputStream(uri);
+             FileOutputStream output = new FileOutputStream(temp)) {
+            if (input == null) {
+                temp.delete();
+                return null;
+            }
+            byte[] buffer = new byte[8192];
+            int read;
+            long total = 0L;
+            while ((read = input.read(buffer)) != -1) {
+                total += read;
+                if (total > 200L * 1024L * 1024L) {
+                    throw new IllegalStateException("apk too large");
+                }
+                output.write(buffer, 0, read);
+            }
+            output.getFD().sync();
+        }
+        return temp;
     }
 
     public static float[] network(PacketInfo packet, int size) {

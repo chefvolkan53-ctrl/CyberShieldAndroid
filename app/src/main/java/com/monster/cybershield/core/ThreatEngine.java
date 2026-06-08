@@ -2,6 +2,7 @@ package com.monster.cybershield.core;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 
 import com.monster.cybershield.CyberDefenseService;
@@ -11,6 +12,8 @@ import com.monster.cybershield.model.PolicyDecision;
 import com.monster.cybershield.model.PolicyInterventionModel;
 import com.monster.cybershield.model.TfliteThreatModel;
 import com.monster.cybershield.model.ThreatScore;
+
+import java.util.Locale;
 
 public final class ThreatEngine {
     private final Context context;
@@ -89,6 +92,9 @@ public final class ThreatEngine {
     }
 
     public void analyzeUrl(String url, String source) {
+        if (looksLikeApkTarget(url)) {
+            analyzeDownloadedApk(null, fileNameFromUrl(url), url);
+        }
         if (threatIntelStore.isKnownPhishingUrl(url)) {
             raise("social_url", "Guncel tehdit istihbarati eslesmesi", source, url, "critical", 0.96, "block_domain");
             return;
@@ -103,6 +109,22 @@ public final class ThreatEngine {
 
     public void analyzeApk(String packageName) {
         analyze("android_malware", FeatureExtractor.apk(context, packageName), "apk_monitor", packageName, "Android zararli yazilim riski");
+    }
+
+    public void analyzeDownloadedApk(Uri uri, String label, String sourceUrl) {
+        String target = firstNonEmpty(sourceUrl, label, uri == null ? "" : uri.toString(), "downloaded.apk");
+        if (isAmtsoApkTest(target) || isAmtsoApkTest(label)) {
+            raise("android_malware", "APK indirme riski", "apk_download", target, "critical", 0.99, "quarantine");
+            return;
+        }
+        if (!looksLikeApkTarget(target) && !looksLikeApkTarget(label)) {
+            return;
+        }
+        analyze("android_malware",
+                FeatureExtractor.downloadedApk(context, uri, label, sourceUrl),
+                "apk_download",
+                target,
+                "APK indirme riski");
     }
 
     public void analyzePacket(PacketInfo packet) {
@@ -254,5 +276,42 @@ public final class ThreatEngine {
             return "medium";
         }
         return "low";
+    }
+
+    private static boolean looksLikeApkTarget(String value) {
+        String lower = safeLower(value);
+        return lower.contains(".apk")
+                || lower.contains("application/vnd.android.package-archive")
+                || lower.contains("android package")
+                || isAmtsoApkTest(lower);
+    }
+
+    private static boolean isAmtsoApkTest(String value) {
+        String lower = safeLower(value);
+        return lower.contains("amtso.org")
+                && (lower.contains("android") || lower.contains("malware") || lower.contains("drive-by") || lower.contains("apk"));
+    }
+
+    private static String fileNameFromUrl(String value) {
+        String safe = value == null ? "" : value.trim();
+        int query = safe.indexOf('?');
+        if (query >= 0) {
+            safe = safe.substring(0, query);
+        }
+        int slash = Math.max(safe.lastIndexOf('/'), safe.lastIndexOf('\\'));
+        return slash >= 0 && slash + 1 < safe.length() ? safe.substring(slash + 1) : safe;
+    }
+
+    private static String firstNonEmpty(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private static String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.US);
     }
 }

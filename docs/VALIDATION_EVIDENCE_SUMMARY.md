@@ -48,12 +48,21 @@ Observed result:
 
 AMTSO Android malware and drive-by pages were launched for manual feature-check flow. Full pass/fail still requires observing whether the APK download/install path is blocked or raises a CyberShield event on the device.
 
+Update after APK download hardening:
+
+- Added APK download monitoring through Android DownloadManager completion events.
+- Added MediaStore Downloads observation for recently created `.apk` files.
+- Added pre-install APK feature extraction for downloaded APK content when Android grants file access.
+- Added AMTSO Android malware/download page handling as a safe test-threat signal.
+- Deduplication now uses model + target, so a phishing warning for a host does not suppress a separate APK download warning for the same host.
+- Android limitation remains: CyberShield cannot silently cancel another app's download or delete another app's file without user-approved action/storage access. The app now raises intervention and quarantine/block actions as soon as the download/link layer is visible to CyberShield.
+
 ## Remaining Evidence Needed
 
 - 24-48 hour field monitor CSV using `tools/android_field_monitor.py`
 - Benign URL/SMS/APK false-positive corpus run
 - Controlled DNS spoof and ARP spoof lab replay
-- APK install/download AMTSO result confirmed from device UI
+- APK install/download AMTSO result confirmed from device UI after the download hardening build
 - Independent OWASP MASVS/MASA-style review
 
 ## Evidence Handling

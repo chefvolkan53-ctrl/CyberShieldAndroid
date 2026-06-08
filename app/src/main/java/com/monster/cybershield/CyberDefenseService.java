@@ -16,6 +16,7 @@ import android.os.IBinder;
 
 import com.monster.cybershield.core.ThreatEvent;
 import com.monster.cybershield.core.ThreatStore;
+import com.monster.cybershield.core.ApkDownloadMonitor;
 import com.monster.cybershield.core.AlertNoisePolicy;
 import com.monster.cybershield.core.BlocklistStore;
 import com.monster.cybershield.core.MitmArpMonitor;
@@ -48,6 +49,7 @@ public class CyberDefenseService extends Service {
     private ModelCatalog catalog;
     private MitmArpMonitor mitmArpMonitor;
     private WifiThreatMonitor wifiThreatMonitor;
+    private ApkDownloadMonitor apkDownloadMonitor;
     private AlertNoisePolicy alertNoisePolicy;
 
     @Override
@@ -62,6 +64,8 @@ public class CyberDefenseService extends Service {
         workerThread = new HandlerThread("cyber-defense-worker");
         workerThread.start();
         worker = new Handler(workerThread.getLooper());
+        apkDownloadMonitor = new ApkDownloadMonitor(this, worker);
+        apkDownloadMonitor.start();
     }
 
     @Override
@@ -88,6 +92,9 @@ public class CyberDefenseService extends Service {
 
     @Override
     public void onDestroy() {
+        if (apkDownloadMonitor != null) {
+            apkDownloadMonitor.stop();
+        }
         if (workerThread != null) {
             workerThread.quitSafely();
         }
@@ -107,6 +114,9 @@ public class CyberDefenseService extends Service {
                 }
                 if (wifiThreatMonitor != null) {
                     wifiThreatMonitor.scanAndRaise();
+                }
+                if (apkDownloadMonitor != null) {
+                    apkDownloadMonitor.scanRecentDownloads();
                 }
                 updateGuardNotification();
                 worker.postDelayed(this, 60 * 1000L);
@@ -131,7 +141,7 @@ public class CyberDefenseService extends Service {
             return;
         }
         ThreatStore threatStore = new ThreatStore(this);
-        if (alertNoisePolicy != null && threatStore.hasRecentTarget(target, alertNoisePolicy.dedupWindowMs())) {
+        if (alertNoisePolicy != null && threatStore.hasRecentModelTarget(modelId, target, alertNoisePolicy.dedupWindowMs())) {
             return;
         }
         ThreatEvent event = threatStore.add(modelId, title, source, target, severity, probability, recommendedAction);
