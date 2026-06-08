@@ -18,6 +18,7 @@ The update private key must exist only in GitHub Actions secrets or in the offli
 - Threat feed generation runs without write access.
 - Signing and publishing runs in the `security-update-signing` environment.
 - The signing job has the only workflow-level write permission.
+- Signed threat feed updates are published through pull requests and must pass branch protection before reaching `main`.
 - TFLite/feed/metadata packages must pass SHA-256 and ECDSA verification before the Android app activates them.
 - Built-in app assets remain the fallback if an update fails.
 

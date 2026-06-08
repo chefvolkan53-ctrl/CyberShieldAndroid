@@ -9,6 +9,7 @@ This repository contains security tooling and an update pipeline. Keep GitHub it
   - unsigned feed generation has read-only permissions
   - signing/publishing is isolated in `security-update-signing`
   - write permission exists only in the signing job
+  - signed feed updates are published through pull requests instead of direct writes to `main`
 - Signed package verification on Android.
 - Public key in app, private key only in secret/offline storage.
 - Security policy in `SECURITY.md`.
@@ -39,7 +40,7 @@ Use:
 - Require branches to be up to date before merging
 - Restrict force pushes
 - Restrict deletions
-- Do not allow bypassing the above settings unless you intentionally need emergency owner access
+- Keep owner bypass available only if this is a single-maintainer repository and you need emergency recovery access
 
 ### Protected Environment
 
@@ -57,11 +58,12 @@ Recommended rules:
 - Deployment branches: selected branches only -> `main`
 - Optional wait timer: 5 minutes
 
-Then keep this secret in that environment or repository Actions secrets:
+Then keep this secret in that environment:
 
 `CYBERSHIELD_UPDATE_PRIVATE_KEY`
 
 The safest option is the protected environment secret, because the signing job cannot access it until the environment approval passes.
+Do not keep a duplicate repository-level copy unless you are deliberately rotating or recovering the secret.
 
 ## If A Secret Leaks
 

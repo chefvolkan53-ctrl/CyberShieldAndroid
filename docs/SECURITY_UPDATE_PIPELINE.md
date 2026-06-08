@@ -38,7 +38,8 @@ The workflow:
 3. Enters the `security-update-signing` environment.
 4. Signs the feed with the private update key stored in a protected GitHub secret.
 5. Rebuilds `security-updates/model_update_manifest.json`.
-6. Commits the signed feed and manifest back to the repository.
+6. Pushes the signed feed and manifest to a short-lived update branch.
+7. Opens a pull request into `main`, so branch protection and Code Owner review still apply before Android devices can see the new manifest.
 
 Required GitHub secret or protected environment secret:
 
@@ -47,11 +48,21 @@ Required GitHub secret or protected environment secret:
 Recommended location:
 
 - `Settings -> Environments -> security-update-signing -> Environment secrets`
+- Do not keep a duplicate repository-level copy of this secret.
 
 Recommended environment protection:
 
 - required reviewer: `chefvolkan53-ctrl`
 - deployment branches: `main` only
+
+Recommended `main` branch protection:
+
+- require pull requests before merge
+- require at least 1 approval
+- require Code Owner review
+- require the `build-feed` status check
+- require branches to be up to date before merge
+- keep force pushes and branch deletion disabled
 
 Optional GitHub secrets:
 
