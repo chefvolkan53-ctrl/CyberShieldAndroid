@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "17 02 * * *"
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 concurrency:
   group: security-threat-feed-${{ github.ref }}
@@ -55,6 +58,8 @@ jobs:
     environment: security-update-signing
     permissions:
       contents: write
+      pull-requests: write
+      statuses: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,16 +101,61 @@ jobs:
             --output security-updates/model_update_manifest.json
           rm -f /tmp/cybershield_update_private_key.pem
 
-      - name: Commit feed update
+      - name: Publish feed update pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          base_branch="${GITHUB_REF_NAME:-main}"
+          update_branch="security-updates/threat-intel-${GITHUB_RUN_ID}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$update_branch"
           git add security-updates/threat_intel.json security-updates/threat_intel_signature.json security-updates/model_update_manifest.json
           if git diff --cached --quiet; then
             echo "No threat intelligence changes."
           else
             git commit -m "Update CyberShield threat intelligence feed"
-            git pull --rebase origin "${GITHUB_REF_NAME:-main}"
-            git push
+            git push --force-with-lease origin "$update_branch"
+            head_sha="$(git rev-parse HEAD)"
+            python - <<'PY' > /tmp/cybershield_status.json
+import json
+
+print(json.dumps({
+    "state": "success",
+    "context": "build-feed",
+    "description": "Threat feed built and signed by protected workflow",
+    "target_url": f"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+}))
+PY
+            curl -sSf \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${head_sha}" \
+              -d @/tmp/cybershield_status.json
+            python - <<PY > /tmp/cybershield_pr.json
+import json
+
+print(json.dumps({
+    "title": "Update CyberShield threat intelligence feed",
+    "head": "${update_branch}",
+    "base": "${base_branch}",
+    "body": (
+        "Automated signed CyberShield threat intelligence update.\\n\\n"
+        "- Built by the read-only feed job.\\n"
+        "- Signed inside the protected security-update-signing environment.\\n"
+        "- Requires branch protection review before reaching main."
+    ),
+    "maintainer_can_modify": True
+}))
+PY
+            curl -sSf \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls" \
+              -d @/tmp/cybershield_pr.json
           fi
