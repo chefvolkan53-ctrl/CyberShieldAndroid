@@ -90,7 +90,15 @@ Observed evidence:
 - CyberShield VPN service was active through Android VPN service binding.
 - ADB connectivity dump still exposed the Wi-Fi resolver as `192.168.254.254`, so ADB-only evidence does not prove complete DNS-leak elimination.
 
-Status: LIMITED. Browser-visible DNS leak results must be checked on-device after each VPN/DNS build. This smoke run verifies the service path is active, but it is not a production-grade no-leak certificate.
+On-device browser result:
+
+- Site: `dnsleaktest.com`
+- Result: standard test completed with one resolver.
+- Resolver shown by the test: `172.68.45.70`
+- ISP shown by the test: Cloudflare
+- Country shown by the test: Nicosia, Cyprus
+
+Status: PASS for this device/browser smoke run. Browser-visible DNS went through the configured Cloudflare resolver rather than exposing multiple ISP/router resolvers. This is still a smoke test, not a formal no-leak certification across every app, Private DNS mode and network state.
 
 Current Wi-Fi/ARP observation:
 
@@ -101,6 +109,25 @@ Current Wi-Fi/ARP observation:
 - No live ARP spoof, Evil Twin or deauth lab attack was generated during this run.
 
 Status: PASS for passive baseline observation, LIMITED for attack coverage. Controlled ARP spoof, DNS spoof, Evil Twin and deauth tests require a separate lab access point/attacker device.
+
+Five-minute benign Wi-Fi/ARP field sample:
+
+- Samples: 15
+- Unique BSSID count: 1
+- Unique gateway MAC count: 1
+- Gateway MAC: `6c:3b:6b:5b:0a:2e`
+- ARP entry count: stable at 1
+- RSSI range: -81 dBm to -70 dBm
+- CyberShield Wi-Fi/MITM/ARP notification during sample: none observed
+
+Status: PASS for a short benign false-positive smoke sample. The `wifi_threat` near-perfect dataset warning remains until controlled ARP spoof, DNS spoof, Evil Twin and deauth lab replay evidence is collected.
+
+Lab suitability note:
+
+- The connected Windows Wi-Fi adapter is a normal infrastructure client.
+- Hosted network support is not available.
+- No monitor-mode/deauth-capable lab adapter or separate controlled AP/attacker device was available during this run.
+- For that reason, no live ARP poisoning, DNS spoofing or deauth traffic was generated.
 
 ## Secure Update Evidence
 
