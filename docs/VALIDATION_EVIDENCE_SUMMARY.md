@@ -72,6 +72,13 @@ Observed device result after hardening:
 - Result: AMTSO APK was not left in `/sdcard/Download`.
 - Requirement: Android all-files access is needed for file-level quarantine of APKs downloaded by other apps.
 
+Repeat AMTSO download result:
+
+- URL tested again: `https://amtso.eicar.org/com.amtso.mobiletestfile.apk`
+- Result: no AMTSO/mobiletest APK was found under `/sdcard/Download` after the run.
+- Browser showed its own completed download notification during the flow, but the APK was not left in public Downloads when checked through ADB.
+- Status: PASS for file-left-behind check, LIMITED for notification-title evidence because Android notification dumps did not expose a fresh CyberShield AMTSO title cleanly in this repeat run.
+
 False-positive hardening result:
 
 - Clean local APK tested: CyberShield release APK copied to `/sdcard/Download/clean-local.apk`.
@@ -129,6 +136,27 @@ Lab suitability note:
 - No monitor-mode/deauth-capable lab adapter or separate controlled AP/attacker device was available during this run.
 - For that reason, no live ARP poisoning, DNS spoofing or deauth traffic was generated.
 
+Ten-minute live field sample:
+
+- Samples: 20
+- Battery start/end: 100% / 100% while USB powered
+- CyberShield process ID: stable
+- Total PSS range: 63 MB to 111 MB
+- Average PSS: about 79 MB
+- Unique BSSID count: 1
+- Unique gateway MAC count: 1
+- ARP entry count: stable at 1
+- RSSI range: -81 dBm to -71 dBm
+- CyberShield Wi-Fi/MITM/ARP notification during sample: none observed
+
+Status: PASS for a 10-minute live smoke run. This does not replace the required 24-48 hour battery, CPU and false-positive field run.
+
+Clean URL false-positive smoke:
+
+- Opened clean targets through the device browser: Google, Play Store, Samsung, WhatsApp, Gmail, YouTube, Cloudflare and Quad9.
+- Result: no new CyberShield threat notification clearly tied to those benign targets was observed.
+- Status: PASS for this small clean URL set. A larger benign corpus is still required before production claims.
+
 ## Secure Update Evidence
 
 Remote update manifest and feed were downloaded from the configured GitHub update channel.
@@ -141,6 +169,32 @@ Observed result:
 - Actual SHA-256: `49fd1ad98df7aa665848755c6e1a7c8d809cb4a94551298c8d28811a16b75a3b`
 - Signature field present: yes
 - Status: PASS for remote feed hash integrity. Signature verification is enforced in-app by `SecurityUpdateVerifier`.
+
+Live feed content check:
+
+- Malicious domains: 12,000
+- Malicious IPs: 12,000
+- Malicious CIDR/IP blocks: 1,735
+- Phishing patterns: 20,000
+- DoH endpoints: 5
+- Risky ports: 25
+- Exploited CVEs: 1,612
+- Source status: URLhaus OK, Spamhaus DROP OK, CISA KEV OK, PhishTank skipped because no API secret is configured.
+
+Update workflow check:
+
+- GitHub Actions workflow exists for daily and manual threat-feed builds.
+- Feed build job runs the model calibration gate.
+- Sign/publish job uses the protected `security-update-signing` environment.
+- Private signing key is read from `CYBERSHIELD_UPDATE_PRIVATE_KEY`; no private key file was found committed in the repository.
+- The workflow publishes update changes through a pull request.
+
+Model retraining status:
+
+- Packaged TFLite files in app assets: 21.
+- Catalog calibration gate currently checks 20 detection models; the policy intervention TFLite model is separate from the detection catalog.
+- Threat-intelligence updates are automated and signed.
+- Full model retraining from fresh online datasets is not yet a complete production automation. It still requires dataset ingestion, training, evaluation, TFLite conversion and signed model publication for each model family.
 
 Security posture note:
 
