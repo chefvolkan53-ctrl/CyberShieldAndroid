@@ -9,5 +9,6 @@ local.properties
 *.keystore
 *.log
 training/outputs/
+validation-evidence/
 .DS_Store
 Thumbs.db
