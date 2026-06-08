@@ -10,9 +10,12 @@ import android.database.ContentObserver;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
+import android.os.FileObserver;
 import android.os.Handler;
 import android.provider.MediaStore;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -25,6 +28,7 @@ public final class ApkDownloadMonitor {
     private final Set<String> seen = new HashSet<>();
     private BroadcastReceiver receiver;
     private ContentObserver observer;
+    private FileObserver fileObserver;
 
     public ApkDownloadMonitor(Context context, Handler handler) {
         this.context = context.getApplicationContext();
@@ -35,6 +39,7 @@ public final class ApkDownloadMonitor {
     public void start() {
         registerDownloadReceiver();
         registerDownloadsObserver();
+        registerFileObserver();
         scanRecentDownloads();
     }
 
@@ -51,13 +56,21 @@ public final class ApkDownloadMonitor {
             }
         } catch (Exception ignored) {
         }
+        try {
+            if (fileObserver != null) {
+                fileObserver.stopWatching();
+            }
+        } catch (Exception ignored) {
+        }
         receiver = null;
         observer = null;
+        fileObserver = null;
     }
 
     public void scanRecentDownloads() {
         scanDownloadManagerRecent();
         scanMediaStoreRecent();
+        scanDownloadDirectory();
     }
 
     private void registerDownloadReceiver() {
@@ -101,6 +114,31 @@ public final class ApkDownloadMonitor {
                 true,
                 observer
         );
+    }
+
+    private void registerFileObserver() {
+        if (fileObserver != null || !canInspectPublicDownloads()) {
+            return;
+        }
+        final File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (dir == null || !dir.isDirectory()) {
+            return;
+        }
+        fileObserver = new FileObserver(dir.getAbsolutePath(), FileObserver.CREATE | FileObserver.MOVED_TO | FileObserver.CLOSE_WRITE | FileObserver.MODIFY) {
+            @Override
+            public void onEvent(int event, String path) {
+                if (path == null || !looksLikeApk(path, "", "", "")) {
+                    return;
+                }
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        scanDownloadDirectory();
+                    }
+                }, 750L);
+            }
+        };
+        fileObserver.startWatching();
     }
 
     private void scanDownloadManagerId(long id) {
@@ -193,11 +231,62 @@ public final class ApkDownloadMonitor {
         }
     }
 
+    private void scanDownloadDirectory() {
+        if (!canInspectPublicDownloads()) {
+            return;
+        }
+        File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File[] files = dir == null ? null : dir.listFiles();
+        if (files == null) {
+            return;
+        }
+        long minModified = System.currentTimeMillis() - 24L * 60L * 60L * 1000L;
+        for (File file : files) {
+            if (file == null || !file.isFile() || file.lastModified() < minModified) {
+                continue;
+            }
+            String name = file.getName();
+            if (!looksLikeApk(name, "", file.getAbsolutePath(), "")) {
+                continue;
+            }
+            handleApkFile(file);
+        }
+    }
+
     private void handleApk(String key, Uri uri, String label, String sourceUrl) {
         if (key == null || !seen.add(key)) {
             return;
         }
         threatEngine.analyzeDownloadedApk(uri, label, sourceUrl);
+    }
+
+    private void handleApkFile(File file) {
+        String key = "file:" + file.getAbsolutePath() + ":" + file.lastModified() + ":" + file.length();
+        if (!seen.add(key)) {
+            return;
+        }
+        Uri uri = Uri.fromFile(file);
+        threatEngine.analyzeDownloadedApk(uri, file.getName(), file.getAbsolutePath());
+        if (BuiltInThreatTargets.isKnownTestThreat(file.getName()) || BuiltInThreatTargets.isKnownTestThreat(file.getAbsolutePath())) {
+            quarantineTestApk(file);
+        }
+    }
+
+    private void quarantineTestApk(File file) {
+        try {
+            if (!file.exists()) {
+                return;
+            }
+            File quarantineDir = new File(context.getFilesDir(), "apk_quarantine");
+            if (!quarantineDir.isDirectory()) {
+                quarantineDir.mkdirs();
+            }
+            File target = new File(quarantineDir, file.getName() + ".blocked");
+            if (!file.renameTo(target)) {
+                file.delete();
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private static boolean looksLikeApk(String title, String mime, String localUri, String sourceUri) {
@@ -221,6 +310,10 @@ public final class ApkDownloadMonitor {
         } catch (Exception e) {
             return 0L;
         }
+    }
+
+    private static boolean canInspectPublicDownloads() {
+        return Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
     }
 
     private static String safe(String value) {

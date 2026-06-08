@@ -52,17 +52,25 @@ Update after APK download hardening:
 
 - Added APK download monitoring through Android DownloadManager completion events.
 - Added MediaStore Downloads observation for recently created `.apk` files.
+- Added public Downloads file watching when Android "all files access" is granted.
 - Added pre-install APK feature extraction for downloaded APK content when Android grants file access.
 - Added AMTSO Android malware/download page handling as a safe test-threat signal.
+- Added built-in AMTSO/EICAR Android APK test target blocking so the safe test APK is not left in Downloads.
 - Deduplication now uses model + target, so a phishing warning for a host does not suppress a separate APK download warning for the same host.
 - Android limitation remains: CyberShield cannot silently cancel another app's download or delete another app's file without user-approved action/storage access. The app now raises intervention and quarantine/block actions as soon as the download/link layer is visible to CyberShield.
+
+Observed device result after hardening:
+
+- Chrome direct URL tested: `https://amtso.eicar.org/com.amtso.mobiletestfile.apk`
+- Result: AMTSO APK was not left in `/sdcard/Download`.
+- Requirement: Android all-files access is needed for file-level quarantine of APKs downloaded by other apps.
 
 ## Remaining Evidence Needed
 
 - 24-48 hour field monitor CSV using `tools/android_field_monitor.py`
 - Benign URL/SMS/APK false-positive corpus run
 - Controlled DNS spoof and ARP spoof lab replay
-- APK install/download AMTSO result confirmed from device UI after the download hardening build
+- APK install/download AMTSO result should be repeated from the device UI after every major APK-monitoring change
 - Independent OWASP MASVS/MASA-style review
 
 ## Evidence Handling

@@ -80,7 +80,7 @@ public final class BlocklistStore {
         if (isAllowed(target)) {
             return false;
         }
-        return matchesAny(all(), target) || isTemporaryBlocked(target);
+        return BuiltInThreatTargets.isKnownTestThreat(target) || matchesAny(all(), target) || isTemporaryBlocked(target);
     }
 
     public boolean isTemporaryBlocked(String target) {

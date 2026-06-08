@@ -30,6 +30,9 @@ public final class ThreatIntelStore {
         if (host.isEmpty()) {
             return false;
         }
+        if (BuiltInThreatTargets.isKnownTestThreat(target)) {
+            return true;
+        }
         if (ips.contains(host) || domains.contains(host) || matchesCidr(host)) {
             return true;
         }
@@ -43,6 +46,9 @@ public final class ThreatIntelStore {
 
     public boolean isKnownPhishingUrl(String url) {
         String value = safe(url).toLowerCase(Locale.US);
+        if (BuiltInThreatTargets.isKnownTestThreatUrl(value)) {
+            return true;
+        }
         if (isKnownMaliciousTarget(value)) {
             return true;
         }

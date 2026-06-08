@@ -92,7 +92,7 @@ public final class ThreatEngine {
     }
 
     public void analyzeUrl(String url, String source) {
-        if (looksLikeApkTarget(url)) {
+        if (BuiltInThreatTargets.isKnownTestThreatUrl(url) || looksLikeApkTarget(url)) {
             analyzeDownloadedApk(null, fileNameFromUrl(url), url);
         }
         if (threatIntelStore.isKnownPhishingUrl(url)) {
@@ -113,7 +113,7 @@ public final class ThreatEngine {
 
     public void analyzeDownloadedApk(Uri uri, String label, String sourceUrl) {
         String target = firstNonEmpty(sourceUrl, label, uri == null ? "" : uri.toString(), "downloaded.apk");
-        if (isAmtsoApkTest(target) || isAmtsoApkTest(label)) {
+        if (BuiltInThreatTargets.isKnownTestThreatUrl(target) || BuiltInThreatTargets.isKnownTestThreatUrl(label) || isAmtsoApkTest(target) || isAmtsoApkTest(label)) {
             raise("android_malware", "APK indirme riski", "apk_download", target, "critical", 0.99, "quarantine");
             return;
         }
