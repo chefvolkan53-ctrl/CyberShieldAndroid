@@ -15,6 +15,8 @@ import android.os.FileObserver;
 import android.os.Handler;
 import android.provider.MediaStore;
 
+import com.monster.cybershield.model.ThreatScore;
+
 import java.io.File;
 import java.util.HashSet;
 import java.util.Locale;
@@ -266,13 +268,24 @@ public final class ApkDownloadMonitor {
             return;
         }
         Uri uri = Uri.fromFile(file);
-        threatEngine.analyzeDownloadedApk(uri, file.getName(), file.getAbsolutePath());
-        if (BuiltInThreatTargets.isKnownTestThreat(file.getName()) || BuiltInThreatTargets.isKnownTestThreat(file.getAbsolutePath())) {
-            quarantineTestApk(file);
+        ThreatScore score = threatEngine.analyzeDownloadedApk(uri, file.getName(), file.getAbsolutePath());
+        if (shouldQuarantine(file, score)) {
+            quarantineApk(file);
         }
     }
 
-    private void quarantineTestApk(File file) {
+    private boolean shouldQuarantine(File file, ThreatScore score) {
+        if (BuiltInThreatTargets.isKnownTestThreat(file.getName()) || BuiltInThreatTargets.isKnownTestThreat(file.getAbsolutePath())) {
+            return true;
+        }
+        if (score == null) {
+            return false;
+        }
+        float probability = Math.max(score.risk, score.confidence);
+        return score.actionable && probability >= 0.70f;
+    }
+
+    private void quarantineApk(File file) {
         try {
             if (!file.exists()) {
                 return;

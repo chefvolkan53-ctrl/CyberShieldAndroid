@@ -55,7 +55,8 @@ Update after APK download hardening:
 - Added public Downloads file watching when Android "all files access" is granted.
 - Added pre-install APK feature extraction for downloaded APK content when Android grants file access.
 - Added AMTSO Android malware/download page handling as a safe test-threat signal.
-- Added built-in AMTSO/EICAR Android APK test target blocking so the safe test APK is not left in Downloads.
+- Added built-in AMTSO/EICAR Android APK test target blocking for standards validation only.
+- General downloaded APK handling now uses the Android malware TFLite model result, not only host blocklists. APK files from any source are feature-extracted before install; high-risk model scores raise a quarantine action and, when public Downloads access is available, the APK is moved out of Downloads.
 - Deduplication now uses model + target, so a phishing warning for a host does not suppress a separate APK download warning for the same host.
 - Android limitation remains: CyberShield cannot silently cancel another app's download or delete another app's file without user-approved action/storage access. The app now raises intervention and quarantine/block actions as soon as the download/link layer is visible to CyberShield.
 

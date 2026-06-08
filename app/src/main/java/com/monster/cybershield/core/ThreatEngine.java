@@ -111,20 +111,30 @@ public final class ThreatEngine {
         analyze("android_malware", FeatureExtractor.apk(context, packageName), "apk_monitor", packageName, "Android zararli yazilim riski");
     }
 
-    public void analyzeDownloadedApk(Uri uri, String label, String sourceUrl) {
+    public ThreatScore analyzeDownloadedApk(Uri uri, String label, String sourceUrl) {
         String target = firstNonEmpty(sourceUrl, label, uri == null ? "" : uri.toString(), "downloaded.apk");
         if (BuiltInThreatTargets.isKnownTestThreatUrl(target) || BuiltInThreatTargets.isKnownTestThreatUrl(label) || isAmtsoApkTest(target) || isAmtsoApkTest(label)) {
             raise("android_malware", "APK indirme riski", "apk_download", target, "critical", 0.99, "quarantine");
-            return;
+            return new ThreatScore("android_malware", "Android Malware", 0.99f, 0.99f, true, 0.5);
         }
         if (!looksLikeApkTarget(target) && !looksLikeApkTarget(label)) {
-            return;
+            return null;
         }
-        analyze("android_malware",
-                FeatureExtractor.downloadedApk(context, uri, label, sourceUrl),
-                "apk_download",
-                target,
-                "APK indirme riski");
+        ModelSpec spec = catalog.byId("android_malware");
+        if (spec == null) {
+            return null;
+        }
+        ThreatScore score = scoreOnly("android_malware", FeatureExtractor.downloadedApk(context, uri, label, sourceUrl));
+        if (score == null) {
+            return null;
+        }
+        float probability = Math.max(score.risk, score.confidence);
+        double warnThreshold = Math.max(0.55, calibrationStore.threshold(spec.id, spec.threshold));
+        if (probability >= warnThreshold) {
+            String action = probability >= 0.70f ? "quarantine" : "warn";
+            raise("android_malware", "APK indirme riski", "apk_download", target, severity(probability), probability, action);
+        }
+        return score;
     }
 
     public void analyzePacket(PacketInfo packet) {
