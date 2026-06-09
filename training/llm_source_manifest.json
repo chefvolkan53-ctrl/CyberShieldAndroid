@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "purpose": "CyberShield defensive cyber analyst LLM training sources",
+  "local_desktop_folders": [
+    "sosyal mühendislik",
+    "cybershield_tflite_policy",
+    "Kötü Amaçlı Yazılım (Mirai)",
+    "android malware",
+    "attack",
+    "iot attack",
+    "Post-Kuantum",
+    "network",
+    "doh",
+    "dns saldırı",
+    "phising",
+    "wifi",
+    "Honeypots",
+    "darknet",
+    "gizlilik",
+    "anomali"
+  ],
+  "internet_sources": [
+    {
+      "id": "mitre_attack_enterprise_stix",
+      "kind": "standard_knowledge_base",
+      "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+      "license_note": "MITRE ATT&CK terms apply"
+    },
+    {
+      "id": "mitre_attack_mobile_stix",
+      "kind": "standard_knowledge_base",
+      "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/mobile-attack/mobile-attack.json",
+      "license_note": "MITRE ATT&CK terms apply"
+    },
+    {
+      "id": "mitre_attack_ics_stix",
+      "kind": "standard_knowledge_base",
+      "url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/ics-attack/ics-attack.json",
+      "license_note": "MITRE ATT&CK terms apply"
+    },
+    {
+      "id": "mitre_d3fend_mappings",
+      "kind": "defense_knowledge_base",
+      "url": "https://d3fend.mitre.org/api/ontology/inference/d3fend-full-mappings.json",
+      "license_note": "MITRE D3FEND terms apply"
+    },
+    {
+      "id": "cisa_kev",
+      "kind": "exploited_vulnerability_feed",
+      "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+      "license_note": "CISA public data"
+    },
+    {
+      "id": "cwe_latest_xml",
+      "kind": "weakness_taxonomy",
+      "url": "https://cwe.mitre.org/data/xml/cwec_latest.xml.zip",
+      "license_note": "MITRE CWE terms apply"
+    },
+    {
+      "id": "capec_latest_xml",
+      "kind": "attack_pattern_taxonomy",
+      "url": "https://capec.mitre.org/data/xml/capec_latest.xml",
+      "license_note": "MITRE CAPEC terms apply"
+    },
+    {
+      "id": "urlhaus_recent_csv",
+      "kind": "malware_url_feed",
+      "url": "https://urlhaus.abuse.ch/downloads/csv_recent/",
+      "license_note": "abuse.ch URLhaus terms apply"
+    },
+    {
+      "id": "spamhaus_drop",
+      "kind": "malicious_network_feed",
+      "url": "https://www.spamhaus.org/drop/drop.txt",
+      "license_note": "Spamhaus DROP terms apply"
+    },
+    {
+      "id": "spamhaus_edrop",
+      "kind": "malicious_network_feed",
+      "url": "https://www.spamhaus.org/drop/edrop.txt",
+      "license_note": "Spamhaus DROP terms apply"
+    },
+    {
+      "id": "sigma_rules",
+      "kind": "detection_as_code",
+      "url": "https://github.com/SigmaHQ/sigma/archive/refs/heads/master.zip",
+      "license_note": "SigmaHQ repository license applies"
+    },
+    {
+      "id": "yara_rules",
+      "kind": "detection_as_code",
+      "url": "https://github.com/Yara-Rules/rules/archive/refs/heads/master.zip",
+      "license_note": "YARA-Rules repository license applies"
+    },
+    {
+      "id": "emerging_threats_open_suricata",
+      "kind": "network_detection_rules",
+      "url": "https://rules.emergingthreats.net/open/suricata-7.0/emerging.rules.tar.gz",
+      "license_note": "Proofpoint Emerging Threats Open license applies"
+    },
+    {
+      "id": "owasp_masvs",
+      "kind": "mobile_security_standard",
+      "url": "https://github.com/OWASP/owasp-masvs/archive/refs/heads/master.zip",
+      "license_note": "OWASP project license applies"
+    },
+    {
+      "id": "owasp_mastg",
+      "kind": "mobile_testing_guide",
+      "url": "https://github.com/OWASP/owasp-mastg/archive/refs/heads/master.zip",
+      "license_note": "OWASP project license applies"
+    },
+    {
+      "id": "nist_sp_800_61_r2_pdf",
+      "kind": "incident_response_playbook",
+      "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf",
+      "license_note": "NIST public document"
+    }
+  ],
+  "optional_sources": [
+    {
+      "id": "phishtank_online_valid",
+      "requires_env": "PHISHTANK_APP_KEY",
+      "url_template": "http://data.phishtank.com/data/{PHISHTANK_APP_KEY}/online-valid.json.bz2"
+    },
+    {
+      "id": "nvd_recent_cves",
+      "kind": "vulnerability_api",
+      "url": "https://services.nvd.nist.gov/rest/json/cves/2.0",
+      "optional_env": "NVD_API_KEY"
+    },
+    {
+      "id": "malwarebazaar_recent_metadata",
+      "kind": "malware_hash_metadata",
+      "api": "https://mb-api.abuse.ch/api/v1/",
+      "note": "Metadata only. Do not download malware samples into the repo."
+    }
+  ]
+}

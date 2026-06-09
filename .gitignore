@@ -8,7 +8,12 @@ local.properties
 *.jks
 *.keystore
 *.log
+__pycache__/
+*.py[cod]
 training/outputs/
+training/llm_data/
+training/llm_external_sources/
+training/llm_runs/
 validation-evidence/
 .DS_Store
 Thumbs.db
